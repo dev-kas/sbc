@@ -26,11 +26,16 @@ class Compiler {
     this.reset();
 
     analysis.scopes.forEach((scope) => {
-      scope.variables.forEach((val, name) => {
+      scope.variables.forEach((analysisValue, name) => {
         const id = scope.varIDs.get(name);
         const target = scope.globals.has(name) ? this.stage : this.mainSprite;
 
-        target.variables[id] = [sprintf("%s\n%s", name, id), val.value || 0];
+        const initialValue =
+          analysisValue && analysisValue.value !== undefined
+            ? analysisValue.value
+            : 0;
+
+        target.variables[id] = [sprintf("%s\n%s", name, id), initialValue];
       });
     });
 

@@ -35,7 +35,11 @@ class Scope {
 
   get(name) {
     if (this.variables.has(name) && this.varIDs.has(name)) {
-      return { value: this.variables.get(name), id: this.varIDs.get(name) };
+      return {
+        value: this.variables.get(name),
+        id: this.varIDs.get(name),
+        symbol: name,
+      };
     }
     const scope = this.resolve(name);
     return scope.get(name);
@@ -126,7 +130,23 @@ class Analyzer {
       for (const [fieldName, argIndex] of Object.entries(isaEntry.fields)) {
         const argNode = node.args[argIndex];
         if (argNode) {
-          block.fields[fieldName] = [argNode.raw, null];
+          const evaluated = this.visit(argNode);
+
+          let finalValue;
+
+          if (
+            evaluated &&
+            evaluated.id &&
+            evaluated.value instanceof AnalysisValue
+          ) {
+            finalValue = evaluated.value.value;
+          } else if (evaluated instanceof AnalysisValue) {
+            finalValue = evaluated.value;
+          } else {
+            finalValue = String(evaluated.raw || "");
+          }
+
+          block.fields[fieldName] = [finalValue, null];
         }
       }
     }
@@ -164,10 +184,13 @@ class Analyzer {
     const variable = this.currentScope.get(node.ident.symbol);
     const foldedValue = this.visit(node.value);
 
+    if (foldedValue instanceof AnalysisValue) {
+      this.currentScope.set(node.ident.symbol, foldedValue);
+    }
+
     const instruction = new Instruction();
     instruction.opcode = "data_setvariableto";
     instruction.fields.VARIABLE = [node.ident.symbol, variable.id];
-
     instruction.inputs.VALUE = foldedValue;
 
     return instruction;
@@ -191,7 +214,12 @@ class Analyzer {
     const left = this.visit(node.lhs);
     const right = this.visit(node.rhs);
 
-    if (left instanceof AnalysisValue && right instanceof AnalysisValue) {
+    if (
+      left instanceof AnalysisValue &&
+      !left.id &&
+      right instanceof AnalysisValue &&
+      !right.id
+    ) {
       const lVal = left.value;
       const rVal = right.value;
       switch (node.operator) {

@@ -65,7 +65,7 @@ WhenGreenFlagClicked() {
 code = `
 global score = 100;
 
-WhenGreenFlagClicked() {
+events.whenFlagClicked() {
 	local score = 0;
 	local bonus = 5;
 
@@ -73,23 +73,24 @@ WhenGreenFlagClicked() {
 	score = score + 1;
 }
 
-WhenThisSpriteClicked() {
+whenThisSpriteClicked() {
 	local score = 10;
 	local bonus = 2;
 
 	score = score + bonus;
 	score = score + 1;
 }
-WhenStartAsClone() {
+
+events.whenKeyPressed("sp" + "a" + "" + "ce") {
 	score = score + 50;
 }
-`;
 
-code = `
-local score = 0;
-events.whenKeyPressed("space") {
-	score = score + 1;
+local secretKey = "enter";
+
+events.whenKeyPressed(secretKey) {
+	score = score + 1000;
 }
+
 `;
 
 console.log("CODE:");
