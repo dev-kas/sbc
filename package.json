@@ -1,0 +1,19 @@
+{
+  "name": "sbc",
+  "version": "1.0.0",
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "github.com/dev-kas/sbc.git"
+  },
+  "license": "MIT",
+  "author": "dev-kas",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node ."
+  },
+  "dependencies": {
+    "memfs": "^4.57.2"
+  }
+}
