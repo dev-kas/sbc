@@ -87,8 +87,8 @@ WhenStartAsClone() {
 
 code = `
 local score = 0;
-WhenKeyPressed("space") {
-score = score + 1;
+events.whenKeyPressed("space") {
+	score = score + 1;
 }
 `;
 

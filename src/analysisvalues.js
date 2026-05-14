@@ -15,7 +15,9 @@ class AnalysisBlock {
 }
 
 class EventBlock extends AnalysisBlock {
-  name = "";
+  opcode;
+  inputs = {};
+  fields = {};
 }
 
 class Instruction {

@@ -43,14 +43,20 @@ class Compiler {
 
   compileEvent(eventBlock, target) {
     const hat = new scratch.Block();
-    hat.opcode = this.mapEventOpcode(eventBlock.name);
+    hat.opcode = eventBlock.opcode;
     hat.topLevel = true;
+    hat.x = 0;
+    hat.y = 0;
+
+    hat.fields = eventBlock.fields;
+    for (const [key, value] of Object.entries(eventBlock.inputs)) {
+      hat.inputs[key] = this.compileInput(value, target, null);
+    }
 
     const hatId = generate("block");
     target.blocks[hatId] = hat;
 
     let previousBlockId = hatId;
-
     eventBlock.instructions.forEach((inst) => {
       const currentBlockId = this.compileInstruction(
         inst,
@@ -136,15 +142,6 @@ class Compiler {
 
     target.blocks[blockId] = block;
     return blockId;
-  }
-
-  mapEventOpcode(name) {
-    const maps = {
-      WhenGreenFlagClicked: "event_whenflagclicked",
-      WhenThisSpriteClicked: "event_whenthisspriteclicked",
-      WhenStartAsClone: "control_start_as_clone",
-    };
-    return maps[name] || name;
   }
 
   mapOperatorOpcode(op) {

@@ -27,7 +27,7 @@ const TokenType = enumify([
 const isWhitespace = (c) => /\s/.test(c);
 const isAlpha = (c) => /[a-zA-Z]/.test(c);
 const isDigit = (c) => /[0-9]/.test(c);
-const isIdentCompliant = (c) => /[a-zA-Z0-9_$]/.test(c);
+const isIdentCompliant = (c) => /[a-zA-Z0-9_$\.]/.test(c);
 
 const singleCharTokenMap = {
   "{": TokenType.LBRACE,

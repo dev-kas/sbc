@@ -1,4 +1,5 @@
 const { sprintf } = require("./utils");
+const isa = require("./isa");
 const { generate } = require("./id");
 const {
   AnalysisValue,
@@ -79,9 +80,65 @@ class Analyzer {
     });
   }
 
+  lookupISA(opcodeAlias) {
+    const parts = opcodeAlias.split(".");
+
+    if (parts.length > 1) {
+      const namespace = parts.shift();
+      const name = parts.join(".");
+
+      const ns = isa[namespace];
+      if (!ns) {
+        throw new Error(sprintf("unknown opcode namespace `%s`", namespace));
+      }
+
+      const opcode = ns[name];
+      if (!opcode) {
+        throw new Error(
+          sprintf(
+            "unknown opcode alias `%s` under namespace `%s`",
+            name,
+            namespace,
+          ),
+        );
+      }
+
+      return opcode;
+    }
+
+    for (const ns of Object.values(isa)) {
+      if (opcodeAlias in ns) {
+        return ns[opcodeAlias];
+      }
+    }
+
+    throw new Error(sprintf("unknown opcode alias `%s`", opcodeAlias));
+  }
+
   visitEventHook(node) {
     const block = new EventBlock();
-    block.name = node.ident.symbol;
+    const name = node.ident.symbol;
+    const isaEntry = this.lookupISA(name);
+
+    block.opcode = isaEntry.opcode;
+
+    if (isaEntry.fields) {
+      for (const [fieldName, argIndex] of Object.entries(isaEntry.fields)) {
+        const argNode = node.args[argIndex];
+        if (argNode) {
+          block.fields[fieldName] = [argNode.raw, null];
+        }
+      }
+    }
+
+    if (isaEntry.inputs) {
+      for (const [inputName, argIndex] of Object.entries(isaEntry.inputs)) {
+        const argNode = node.args[argIndex];
+        if (argNode) {
+          block.inputs[inputName] = this.visit(argNode);
+        }
+      }
+    }
 
     const parentScope = this.currentScope;
     this.currentScope = new Scope(parentScope);
