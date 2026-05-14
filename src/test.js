@@ -33,7 +33,10 @@ sprite.blocks[wgfc_id] = wgfc;
 const movesteps = new scratch.Block();
 movesteps.opcode = "motion_movesteps";
 movesteps.parent = wgfc_id;
-movesteps.inputs["STEPS"] = [scratch.unobscuredShadow, [scratch.number, "10"]];
+movesteps.inputs["STEPS"] = [
+  scratch.InputStatus.SHADOW,
+  [scratch.MathValues.NUMBER, "10"],
+];
 const ms_id = generate("block");
 sprite.blocks[ms_id] = movesteps;
 wgfc.next = ms_id;

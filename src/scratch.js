@@ -35,7 +35,7 @@ class Target {
   y = 0;
   tempo = 60;
   textToSpeechLanguage = null;
-  videoStat = "on";
+  videoState = "on";
   videoTransparency = 50;
 }
 
@@ -61,15 +61,52 @@ class Sound {
 
 class Block {
   opcode;
-  next;
-  parent;
+  next = null;
+  parent = null;
   inputs = {};
   fields = {};
   shadow = false;
   topLevel = false;
   x = 0;
   y = 0;
+  mutation;
 }
+
+class Monitor {
+  id;
+  mode = "default"; // "default", "large", "slider", or "list"
+  opcode; // "data_variable" or "data_listcontents"
+  params = {};
+  spriteName = null;
+  value = 0;
+  width = 0;
+  height = 0;
+  x = 5;
+  y = 5;
+  visible = true;
+  sliderMin = 0;
+  sliderMax = 100;
+  isDiscrete = true;
+}
+
+const InputStatus = {
+  SHADOW: 1,
+  NO_SHADOW: 2,
+  BLOCK: 3,
+};
+
+const MathValues = {
+  NUMBER: 4,
+  POSITIVE_NUMBER: 5,
+  POSITIVE_INTEGER: 6,
+  INTEGER: 7,
+  ANGLE: 8,
+  COLOR: 9,
+  STRING: 10,
+  BROADCAST: 11,
+  VARIABLE: 12,
+  LIST: 13,
+};
 
 module.exports = {
   Project,
@@ -78,13 +115,7 @@ module.exports = {
   Costume,
   Sound,
   Block,
-  unobscuredShadow: 1,
-  noShadow: 2,
-  obscuredShadow: 3,
-  number: 4,
-  color: 9,
-  text: 10,
-  broadcast: 11,
-  variable: 12,
-  list: 13,
+  Monitor,
+  InputStatus,
+  MathValues,
 };
