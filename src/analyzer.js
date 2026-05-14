@@ -176,7 +176,10 @@ class Analyzer {
   }
 
   visitVariableDeclaration(node) {
-    const foldedValue = this.visit(node.expr);
+    let foldedValue = this.visit(node.expr);
+    if (foldedValue && foldedValue.id) {
+      foldedValue = foldedValue.value;
+    }
     this.currentScope.define(node.ident.symbol, foldedValue, node.global);
   }
 
@@ -263,6 +266,32 @@ class Analyzer {
     newNode.lhs = left;
     newNode.rhs = right;
     return newNode;
+  }
+
+  visitCallExpression(node) {
+    const isaEntry = this.lookupISA(node.callee.symbol);
+    const instruction = new Instruction();
+    instruction.opcode = isaEntry.opcode;
+
+    if (isaEntry.inputs) {
+      for (const [inputName, argIndex] of Object.entries(isaEntry.inputs)) {
+        const argNode = node.args[argIndex];
+        if (argNode) {
+          instruction.inputs[inputName] = this.visit(argNode);
+        }
+      }
+    }
+
+    if (isaEntry.fields) {
+      for (const [fieldName, argIndex] of Object.entries(isaEntry.fields)) {
+        const argNode = node.args[argIndex];
+        if (argNode) {
+          instruction.fields[fieldName] = [argNode.raw || argNode.symbol, null];
+        }
+      }
+    }
+
+    return instruction;
   }
 }
 

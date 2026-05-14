@@ -85,16 +85,52 @@ events.whenKeyPressed("sp" + "a" + "" + "ce") {
 	score = score + 50;
 }
 
-local secretKey = "enter";
+whenFlagClicked() {
+	goToXY(50, 50);
+}
+`;
 
-events.whenKeyPressed(secretKey) {
-	score = score + 1000;
+code = `
+local x = 0;
+local y = 180;
+local vx = 0;
+local vy = 0;
+local g = 0 - 0.981;
+local ay = g;
+local ax = 0;
+
+whenGreaterThan("timer", 0) {
+	vy = vy + ay;
+	vx = vx + ax;
+	ax = ax * 0.2;
+	x = x + vx; y = y + vy;
+	goToXY(x, y);
+	resetTimer();
 }
 
+whenKeyPressed("d") {
+	ax = ax + 5;
+}
+
+whenKeyPressed("a") {
+	ax = ax - 5;
+}
+
+whenKeyPressed("r") {
+	x = 0;
+	y = 180;
+	vx = 0;
+	vy = 10;
+	ax = 0;
+}
+
+whenKeyPressed("space") {
+	vy = 15;
+}
 `;
 
 console.log("CODE:");
-console.log(code);
+console.log(code.trim());
 
 const lexer = new Lexer();
 lexer.load(code);

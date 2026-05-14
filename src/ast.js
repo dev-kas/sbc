@@ -55,6 +55,11 @@ class BinaryExpression {
   rhs;
 }
 
+class CallExpression {
+  callee;
+  args;
+}
+
 module.exports = {
   EventHook,
   Program,
@@ -66,4 +71,5 @@ module.exports = {
   VariableDeclaration,
   ComparisonExpression,
   BinaryExpression,
+  CallExpression,
 };

@@ -11,6 +11,7 @@ const {
   VariableDeclaration,
   ComparisonExpression,
   BinaryExpression,
+  CallExpression,
 } = require("./ast");
 
 class Parser {
@@ -33,6 +34,10 @@ class Parser {
 
   match(...types) {
     return types.includes(this.at().type);
+  }
+
+  peek(n = 1) {
+    return this.tokens[n] || { type: TokenType.EOF };
   }
 
   expect(type) {
@@ -136,7 +141,11 @@ class Parser {
         result = this.parseVariableDeclaration();
         break;
       case TokenType.IDENT:
-        result = this.parseAssignmentStatement();
+        if (this.peek().type === TokenType.LPAREN) {
+          result = this.parseCallExpression();
+        } else {
+          result = this.parseAssignmentStatement();
+        }
         break;
       default:
         result = this.parseExpression();
@@ -169,6 +178,9 @@ class Parser {
     const start = token.start;
     switch (token.type) {
       case TokenType.IDENT:
+        if (this.peek().type === TokenType.LPAREN) {
+          return this.parseCallExpression();
+        }
         node = new Identifier(token.raw);
         break;
       case TokenType.NUMBER:
@@ -265,6 +277,15 @@ class Parser {
       lhs = ast;
     }
     return lhs;
+  }
+
+  parseCallExpression() {
+    const node = new CallExpression();
+    node.start = this.at().start;
+    node.callee = this.parseIdentifier();
+    node.args = this.parseArguments();
+    node.end = this.at().start;
+    return node;
   }
 }
 
