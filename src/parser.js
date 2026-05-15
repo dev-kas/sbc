@@ -122,7 +122,9 @@ class Parser {
     const startToken = this.at();
     ast.ident = this.parseIdentifier();
     ast.start = startToken.start;
-    ast.args = this.parseArguments();
+    if (this.at().type === TokenType.LPAREN) {
+      ast.args = this.parseArguments();
+    } else this.args = [];
     this.expect(TokenType.LBRACE);
     ast.body = [];
     while (!this.match(TokenType.EOF, TokenType.RBRACE)) {

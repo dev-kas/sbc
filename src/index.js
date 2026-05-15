@@ -129,6 +129,13 @@ whenKeyPressed("space") {
 }
 `;
 
+code = `
+global x = 0;
+whenFlagClicked {
+	x = x + 1;
+}
+`;
+
 console.log("CODE:");
 console.log(code.trim());
 
