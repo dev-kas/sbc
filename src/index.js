@@ -135,7 +135,7 @@ local middle = 50;
 local high = 100;
 local low = 0;
 whenFlagClicked {
-	local value = 20; // random(low, high);
+	local value = random(low, high);
 	if (value >= middle) {
 		if (value == middle) {
 			output = "eq";
@@ -149,35 +149,24 @@ whenFlagClicked {
 `;
 
 code = `
-local var = 0;
-local var2 = 0;
+local scores = [10, 20, 30];
+local i = 0;
+local current = 0;
+
 whenFlagClicked {
-	forever {
-		var = xPosition;
-		var2 = yPosition;
-	}
-}
-
-whenKeyPressed ("a") {
-	goToXY(xPosition, yPosition);
-}
-
-whenKeyPressed ("b") {
-	local xPosition = 250;
-	global yPosition = 250;
-	goToXY(xPosition, yPosition);
-}
-`;
-
-code = `
-whenFlagClicked {
-	forever {
-		if (touchingObject("mouse-pointer")) {
-			say(of("x position", "sprite") + 50);
-		} else {
-			say("no");
-		}
-	}
+    scores.push(50);
+    scores.add(100);
+    
+    repeat (scores.length()) {
+        current = scores[i];
+        if (current > 25) {
+            say(current); 
+        }
+        
+        i = i + 1;
+    }
+    
+    scores.delete(0);
 }
 `;
 

@@ -54,6 +54,13 @@ class Compiler {
 
         target.variables[id] = [sprintf("%s\n%s", name, id), finalValue];
       });
+
+      scope.lists.forEach((val, name) => {
+        const id = scope.listIDs.get(name);
+        const target = scope.globals.has(name) ? this.stage : this.mainSprite;
+        const rawValues = val.map((v) => v.value);
+        target.lists[id] = [name, rawValues];
+      });
     });
 
     analysis.blocks.forEach((eventBlock) => {

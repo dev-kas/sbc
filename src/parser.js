@@ -17,6 +17,8 @@ const {
   IfStatement,
   RepeatStatement,
   UnaryExpression,
+  ArrayLiteral,
+  ListAccessNode,
 } = require("./ast");
 
 class Parser {
@@ -214,7 +216,21 @@ class Parser {
       this.peek().type === TokenType.LPAREN
     ) {
       return this.parseCallExpression();
+    } else if (this.match(TokenType.LBRACKET)) {
+      return this.parseArrayLiteral();
+    } else if (
+      token.type === TokenType.IDENT &&
+      this.peek().type === TokenType.LBRACKET
+    ) {
+      const ident = this.parseIdentifier();
+      this.expect(TokenType.LBRACKET);
+      const index = this.parseExpression();
+      this.expect(TokenType.RBRACKET);
+      const node = new ListAccessNode(ident, index);
+      node.start = ident.start;
+      return node;
     }
+
     this.advance();
 
     let node;
@@ -387,6 +403,22 @@ class Parser {
     node.block = this.parseBlock();
     node.end = this.at().start;
     return node;
+  }
+
+  parseArrayLiteral() {
+    const start = this.expect(TokenType.LBRACKET).start;
+    const elements = [];
+    while (!this.match(TokenType.RBRACKET) && !this.match(TokenType.EOF)) {
+      elements.push(this.parseExpression());
+      if (this.match(TokenType.COMMA)) {
+        this.advance();
+      } else break;
+    }
+    const end = this.expect(TokenType.RBRACKET);
+    const arr = new ArrayLiteral(elements);
+    arr.start = start;
+    arr.end = end;
+    return arr;
   }
 }
 

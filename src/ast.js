@@ -85,6 +85,19 @@ class UnaryExpression {
   rhs;
 }
 
+class ArrayLiteral {
+  constructor(elements = []) {
+    this.elements = elements;
+  }
+}
+
+class ListAccessNode {
+  constructor(ident, index) {
+    this.ident = ident;
+    this.index = index;
+  }
+}
+
 module.exports = {
   EventHook,
   Program,
@@ -102,4 +115,6 @@ module.exports = {
   IfStatement,
   RepeatStatement,
   UnaryExpression,
+  ArrayLiteral,
+  ListAccessNode,
 };

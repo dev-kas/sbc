@@ -9,7 +9,11 @@ const {
   EventBlock,
   Instruction,
 } = require("./analysisvalues");
-const { ComparisonExpression, BinaryExpression } = require("./ast");
+const {
+  ComparisonExpression,
+  BinaryExpression,
+  ArrayLiteral,
+} = require("./ast");
 
 const TERMINATORS = [
   "control_forever",
@@ -22,12 +26,20 @@ class Scope {
     this.parent = parent;
     this.variables = new Map();
     this.varIDs = new Map();
+    this.lists = new Map();
+    this.listIDs = new Map();
     this.globals = new Set();
   }
 
   define(name, value, global = false) {
     this.variables.set(name, value);
     this.varIDs.set(name, generate("variable"));
+    if (global) this.globals.add(name);
+  }
+
+  defineList(name, value, global = false) {
+    this.lists.set(name, value);
+    this.listIDs.set(name, generate("list"));
     if (global) this.globals.add(name);
   }
 
@@ -49,6 +61,14 @@ class Scope {
     }
     const scope = this.resolve(name);
     return scope.get(name);
+  }
+
+  getList(name) {
+    if (this.listIDs.has(name)) {
+      return { id: this.listIDs.get(name), symbol: name };
+    }
+    if (this.parent) return this.parent.getList(name);
+    throw new Error(sprintf("cannot resolve list `%s`", name));
   }
 
   resolve(name) {
@@ -198,11 +218,21 @@ class Analyzer {
   }
 
   visitVariableDeclaration(node) {
-    let foldedValue = this.visit(node.expr);
-    if (foldedValue && foldedValue.id) {
-      foldedValue = foldedValue.value;
+    const evaluatedValue = this.visit(node.expr);
+
+    if (node.expr instanceof ArrayLiteral) {
+      this.currentScope.defineList(
+        node.ident.symbol,
+        evaluatedValue,
+        node.global,
+      );
+    } else {
+      let finalValue = evaluatedValue;
+      if (finalValue && finalValue.id) {
+        finalValue = finalValue.value;
+      }
+      this.currentScope.define(node.ident.symbol, finalValue, node.global);
     }
-    this.currentScope.define(node.ident.symbol, foldedValue, node.global);
   }
 
   visitAssignmentStatement(node) {
@@ -360,7 +390,46 @@ class Analyzer {
   }
 
   visitCallExpression(node) {
-    const isaEntry = this.lookupISA(node.callee.symbol);
+    const name = node.callee.symbol;
+
+    // abstractions
+    if (name.includes(".")) {
+      let [listName, ...method] = name.split(".");
+      method = method.join(".");
+      const list = this.currentScope.getList(listName);
+
+      if (method === "add" || method === "push") {
+        const inst = new Instruction();
+        inst.opcode = "data_addtolist";
+        inst.inputs.ITEM = this.visit(node.args[0]);
+        inst.fields.LIST = [list.symbol, list.id];
+        return inst;
+      }
+      if (method === "remove" || method === "delete") {
+        const inst = new Instruction();
+        inst.opcode = "data_deleteoflist";
+        const visitedIndex = this.visit(node.args[0]);
+        if (visitedIndex instanceof NumberValue) {
+          inst.inputs.INDEX = new NumberValue(visitedIndex.value + 1);
+        } else {
+          const add = new BinaryExpression();
+          add.operator = "+";
+          add.lhs = visitedIndex;
+          add.rhs = new NumberValue(1);
+          inst.inputs.INDEX = add;
+        }
+        inst.fields.LIST = [list.symbol, list.id];
+        return inst;
+      }
+      if (method === "length") {
+        const inst = new Instruction();
+        inst.opcode = "data_lengthoflist";
+        inst.fields.LIST = [list.symbol, list.id];
+        return inst;
+      }
+    }
+
+    const isaEntry = this.lookupISA(name);
 
     let maxArgIndex = -1;
     if (isaEntry.inputs) {
@@ -379,7 +448,7 @@ class Analyzer {
       throw new Error(
         sprintf(
           "block `%s` requires %d arguments, but only %d were provided on line %d",
-          node.callee.symbol,
+          name,
           requiredCount,
           node.args.length,
           indexToLineCol(this.source, node.start).line,
@@ -513,6 +582,37 @@ class Analyzer {
       sub.rhs = rhs;
       return sub;
     }
+  }
+
+  visitListAccessNode(node) {
+    const list = this.currentScope.getList(node.ident.symbol);
+    const instruction = new Instruction();
+    instruction.opcode = "data_itemoflist";
+
+    const visitedIndex = this.visit(node.index);
+
+    if (visitedIndex instanceof NumberValue) {
+      instruction.inputs.INDEX = new NumberValue(visitedIndex.value + 1);
+    } else {
+      const add = new BinaryExpression();
+      add.operator = "+";
+      add.lhs = visitedIndex;
+      add.rhs = new NumberValue(1);
+      instruction.inputs.INDEX = add;
+    }
+
+    instruction.fields.LIST = [list.symbol, list.id];
+    return instruction;
+  }
+
+  visitArrayLiteral(node) {
+    return node.elements.map((element) => {
+      let val = this.visit(element);
+      if (val && val.id) {
+        val = val.value;
+      }
+      return val;
+    });
   }
 }
 
