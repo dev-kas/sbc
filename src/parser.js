@@ -1,4 +1,4 @@
-const { sprintf } = require("./utils");
+const { sprintf, indexToLineCol } = require("./utils");
 const { TokenType } = require("./lexer");
 const {
   Program,
@@ -24,6 +24,7 @@ class Parser {
   reset() {
     this.tokens = [];
     this.label = "unknown";
+    this.source = "";
   }
 
   at() {
@@ -47,9 +48,9 @@ class Parser {
     if (token.type !== type)
       throw new Error(
         sprintf(
-          "unexpected token `%s` at pos %d, expected %s, got %s",
+          "unexpected token `%s` on line %d, expected %s, got %s",
           token.raw,
-          token.start,
+          indexToLineCol(this.source, token.start).line,
           type,
           token.type,
         ),
@@ -57,9 +58,10 @@ class Parser {
     return this.advance();
   }
 
-  parse(tokens, label) {
+  parse(tokens, label, code) {
     this.tokens = tokens;
     this.label = label;
+    this.source = code;
     return this.parseProgram();
   }
 
@@ -220,10 +222,10 @@ class Parser {
       default:
         throw new Error(
           sprintf(
-            "unexpected token `%s` (%s) at pos %d",
+            "unexpected token `%s` (%s) at line %d",
             token.raw,
             token.type,
-            token.start,
+            indexToLineCol(this.source, token.start).line,
           ),
         );
     }

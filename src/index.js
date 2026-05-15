@@ -135,7 +135,6 @@ whenFlagClicked {
 	forever {
 		x = x + 1;
 	}
-	goToXY(20, 20);
 }
 `;
 
@@ -149,7 +148,7 @@ console.log("TOKENS:");
 console.dir(tokens, { depth: null });
 
 const parser = new Parser();
-const ast = parser.parse(tokens, "main");
+const ast = parser.parse(tokens, "main", code);
 console.log("AST:");
 console.dir(ast, { depth: null });
 
