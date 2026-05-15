@@ -133,6 +133,7 @@ code = `
 global x = 0;
 whenFlagClicked {
 	forever {
+		stop();
 		x = x + 1;
 	}
 }

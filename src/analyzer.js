@@ -329,7 +329,7 @@ class Analyzer {
           throw new Error(
             sprintf(
               "unreachable code inside forever loop on line %d",
-              indexToLineCol(this.source, child.start).line,
+              indexToLineCol(this.source, stmt.start).line,
             ),
           );
         }
