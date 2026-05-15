@@ -150,9 +150,11 @@ whenFlagClicked {
 
 code = `
 local var = 0;
+local var2 = 0;
 whenFlagClicked {
 	forever {
 		var = xPosition;
+		var2 = yPosition;
 	}
 }
 
@@ -164,6 +166,16 @@ whenKeyPressed ("b") {
 	local xPosition = 250;
 	global yPosition = 250;
 	goToXY(xPosition, yPosition);
+}
+`;
+
+code = `
+local var = 0;
+whenFlagClicked {
+	var = -2;
+	if (var <= -2) {
+		var = !!var;
+	}
 }
 `;
 

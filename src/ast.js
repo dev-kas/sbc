@@ -80,6 +80,11 @@ class RepeatStatement {
   block;
 }
 
+class UnaryExpression {
+  operator;
+  rhs;
+}
+
 module.exports = {
   EventHook,
   Program,
@@ -96,4 +101,5 @@ module.exports = {
   Block,
   IfStatement,
   RepeatStatement,
+  UnaryExpression,
 };

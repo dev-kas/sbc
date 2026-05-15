@@ -16,6 +16,7 @@ const {
   ForeverStatement,
   IfStatement,
   RepeatStatement,
+  UnaryExpression,
 } = require("./ast");
 
 class Parser {
@@ -296,20 +297,35 @@ class Parser {
   }
 
   parseMultiplicativeExpression() {
-    let lhs = this.parsePrimaryExpression();
+    let lhs = this.parseUnaryExpression();
     while (
       this.at().type === TokenType.BINARYOPERATOR &&
       "*/".includes(this.at().raw)
     ) {
       const ast = new BinaryExpression();
       ast.operator = this.advance().raw;
-      ast.rhs = this.parsePrimaryExpression();
+      ast.rhs = this.parseUnaryExpression();
       ast.lhs = lhs;
       ast.start = ast.lhs.start;
       ast.end = ast.rhs.end;
       lhs = ast;
     }
     return lhs;
+  }
+
+  parseUnaryExpression() {
+    if (
+      this.match(TokenType.NOT) ||
+      (this.match(TokenType.BINARYOPERATOR) && this.at().raw === "-")
+    ) {
+      const node = new UnaryExpression();
+      node.start = this.at().start;
+      node.operator = this.advance().raw;
+      node.rhs = this.parseUnaryExpression();
+      node.end = node.rhs.end;
+      return node;
+    }
+    return this.parsePrimaryExpression();
   }
 
   parseCallExpression() {

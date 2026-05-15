@@ -16,15 +16,17 @@ class Compiler {
 
   reset() {
     this.project = new scratch.Project();
+    this.stage = this._createTarget("Stage", true);
+    this.mainSprite = this._createTarget("Sprite1", false);
+    this.project.targets = [this.stage, this.mainSprite];
+  }
 
-    this.stage = new scratch.Target();
-    this.stage.name = "Stage";
-    this.stage.isStage = true;
-    this.project.targets.push(this.stage);
-
-    this.mainSprite = new scratch.Target();
-    this.mainSprite.layerOrder = 1;
-    this.project.targets.push(this.mainSprite);
+  _createTarget(name, isStage) {
+    const t = new scratch.Target();
+    t.name = name;
+    t.isStage = isStage;
+    t.layerOrder = isStage ? 0 : 1;
+    return t;
   }
 
   compile(analysis) {
@@ -35,17 +37,14 @@ class Compiler {
         const id = scope.varIDs.get(name);
         const target = scope.globals.has(name) ? this.stage : this.mainSprite;
 
-        let initialValue = 0;
-        let current = val;
-        while (current && current.id) current = current.value;
+        let initial = val;
+        while (initial && initial.id) initial = initial.value;
+        const finalValue =
+          initial && typeof initial === "object" && "value" in initial
+            ? initial.value
+            : (initial ?? 0);
 
-        if (current && typeof current === "object" && "value" in current) {
-          initialValue = current.value;
-        } else if (current !== undefined) {
-          initialValue = current;
-        }
-
-        target.variables[id] = [sprintf("%s\n%s", name, id), initialValue];
+        target.variables[id] = [sprintf("%s\n%s", name, id), finalValue];
       });
     });
 
@@ -63,19 +62,16 @@ class Compiler {
     hat.topLevel = true;
     hat.fields = eventBlock.fields;
 
-    for (const [key, value] of Object.entries(eventBlock.inputs)) {
-      hat.inputs[key] = this.compileInput(value, target, hatId);
+    for (const [key, val] of Object.entries(eventBlock.inputs)) {
+      hat.inputs[key] = this.compileInput(val, target, hatId);
     }
 
     target.blocks[hatId] = hat;
-
-    const firstBodyBlockId = this.compileInstructionList(
+    hat.next = this.compileInstructionList(
       eventBlock.instructions,
       target,
       hatId,
     );
-
-    hat.next = firstBodyBlockId;
   }
 
   compileInstruction(inst, target, parentId) {
@@ -83,69 +79,74 @@ class Compiler {
     const block = new scratch.Block();
     block.opcode = inst.opcode;
     block.parent = parentId;
+    block.fields = inst.fields;
 
-    for (const [key, value] of Object.entries(inst.inputs)) {
-      block.inputs[key] = this.compileInput(value, target, blockId);
+    for (const [key, val] of Object.entries(inst.inputs)) {
+      block.inputs[key] = this.compileInput(val, target, blockId);
     }
 
     if (inst.opcode === "control_stop") {
-      const option = block.fields.STOP_OPTION
+      const opt = block.fields.STOP_OPTION
         ? block.fields.STOP_OPTION[0]
         : "all";
-
-      const hasNext = option === "other scripts in sprite";
+      const isCap = opt !== "other scripts in sprite";
       block.mutation = {
         tagName: "mutation",
         children: [],
-        hasnext: hasNext ? "true" : "false",
+        hasnext: isCap ? "false" : "true",
       };
-      if (!hasNext) block.next = null;
+      if (isCap) block.next = null;
     }
 
-    if (inst.body) {
-      const substackId = this.compileInstructionList(
-        inst.body,
-        target,
-        blockId,
-      );
-      if (substackId) {
-        block.inputs.SUBSTACK = [3, substackId, [4, ""]];
+    const substacks = { body: "SUBSTACK", elseBody: "SUBSTACK2" };
+    for (const [prop, inputName] of Object.entries(substacks)) {
+      if (inst[prop]) {
+        const subId = this.compileInstructionList(inst[prop], target, blockId);
+        if (subId)
+          block.inputs[inputName] = [scratch.InputStatus.BLOCK, subId, null];
       }
     }
 
-    if (inst.elseBody) {
-      const substack2Id = this.compileInstructionList(
-        inst.elseBody,
-        target,
-        blockId,
-      );
-      if (substack2Id) {
-        block.inputs.SUBSTACK2 = [3, substack2Id, [4, ""]];
-      }
-    }
-
-    block.fields = inst.fields;
     target.blocks[blockId] = block;
     return blockId;
   }
 
   compileInput(val, target, parentId) {
-    if (val instanceof NumberValue) {
-      return [1, [4, val.value.toString()]];
-    }
-    if (val instanceof StringValue) {
-      return [1, [10, val.value]];
-    }
-    if (val instanceof BooleanValue) {
-      return [1, [10, val.value.toString()]];
-    }
+    if (val instanceof NumberValue)
+      return [
+        scratch.InputStatus.SHADOW,
+        [scratch.MathValues.NUMBER, val.value.toString()],
+      ];
+    if (val instanceof StringValue)
+      return [
+        scratch.InputStatus.SHADOW,
+        [scratch.MathValues.STRING, val.value],
+      ];
+    if (val instanceof BooleanValue)
+      return [
+        scratch.InputStatus.SHADOW,
+        [scratch.MathValues.STRING, val.value.toString()],
+      ];
 
     if (
+      val instanceof Instruction ||
       val instanceof BinaryExpression ||
       val instanceof ComparisonExpression
     ) {
-      const expressionBlockId = this.compileExpression(val, target, parentId);
-      return [3, expressionBlockId, [4, ""]];
+      const isInst = val instanceof Instruction;
+      const blockId = isInst
+        ? this.compileInstruction(val, target, parentId)
+        : this.compileExpression(val, target, parentId);
+
+      const type = isInst
+        ? val.meta?.type
+        : this._isLogicalOp(val.operator)
+          ? "boolean"
+          : "reporter";
+      const shadow =
+        type === "boolean" ? null : [scratch.MathValues.STRING, ""];
+
+      return [scratch.InputStatus.BLOCK, blockId, shadow];
     }
 
     if (val && val.id) {
@@ -159,41 +160,51 @@ class Compiler {
         topLevel: false,
         shadow: false,
       };
-      return [3, blockId, [4, ""]];
+      return [
+        scratch.InputStatus.BLOCK,
+        blockId,
+        [scratch.MathValues.STRING, ""],
+      ];
     }
 
-    if (val instanceof Instruction) {
-      const blockId = this.compileInstruction(val, target, parentId);
-      return [3, blockId, [4, ""]];
-    }
-
-    return [1, [10, ""]];
+    return [scratch.InputStatus.SHADOW, [scratch.MathValues.STRING, ""]];
   }
 
   compileExpression(expr, target, parentId) {
     const blockId = generate("block");
+    const opcode = this._mapOp(expr.operator);
+    const isLogic = this._isLogicalOp(expr.operator);
+
     const block = {
-      opcode: this.mapOperatorOpcode(expr.operator),
+      opcode,
       parent: parentId,
-      inputs: {},
       fields: {},
       next: null,
       topLevel: false,
       shadow: false,
+      inputs: {
+        [isLogic ? "OPERAND1" : "NUM1"]: this.compileInput(
+          expr.lhs,
+          target,
+          blockId,
+        ),
+        [isLogic ? "OPERAND2" : "NUM2"]: this.compileInput(
+          expr.rhs,
+          target,
+          blockId,
+        ),
+      },
     };
-
-    const isLogic = [">", "<", "=="].includes(expr.operator);
-    const in1 = isLogic ? "OPERAND1" : "NUM1";
-    const in2 = isLogic ? "OPERAND2" : "NUM2";
-
-    block.inputs[in1] = this.compileInput(expr.lhs, target, blockId);
-    block.inputs[in2] = this.compileInput(expr.rhs, target, blockId);
 
     target.blocks[blockId] = block;
     return blockId;
   }
 
-  mapOperatorOpcode(op) {
+  _isLogicalOp(op) {
+    return [">", "<", "==", "&&", "||"].includes(op);
+  }
+
+  _mapOp(op) {
     const maps = {
       "+": "operator_add",
       "-": "operator_subtract",
@@ -201,35 +212,27 @@ class Compiler {
       "/": "operator_divide",
       ">": "operator_gt",
       "<": "operator_lt",
+      "==": "operator_equals",
     };
-    return maps[op];
+    return maps[op] || op;
   }
 
   compileInstructionList(instructions, target, parentId) {
-    if (instructions.length === 0) return null;
+    if (!instructions || instructions.length === 0) return null;
+    let firstId = null,
+      lastId = null;
 
-    let firstBlockId = null;
-    let lastBlockId = null;
-
-    instructions.forEach((inst, index) => {
-      const currentParentId = index === 0 ? parentId : lastBlockId;
-
-      const currentBlockId = this.compileInstruction(
+    instructions.forEach((inst, i) => {
+      const currId = this.compileInstruction(
         inst,
         target,
-        currentParentId,
+        i === 0 ? parentId : lastId,
       );
-
-      if (index === 0) {
-        firstBlockId = currentBlockId;
-      } else {
-        target.blocks[lastBlockId].next = currentBlockId;
-      }
-
-      lastBlockId = currentBlockId;
+      if (i === 0) firstId = currId;
+      else target.blocks[lastId].next = currId;
+      lastId = currId;
     });
-
-    return firstBlockId;
+    return firstId;
   }
 }
 

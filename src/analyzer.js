@@ -309,6 +309,49 @@ class Analyzer {
       }
     }
 
+    const createNot = (innerInst) => {
+      const notInst = new Instruction();
+      notInst.opcode = "operator_not";
+      notInst.inputs.OPERAND = innerInst;
+      return notInst;
+    };
+
+    const createBin = (op, l, r) => {
+      const inst = new ComparisonExpression();
+      inst.operator = op;
+      inst.lhs = l;
+      inst.rhs = r;
+      return inst;
+    };
+
+    // abstractions
+    switch (node.operator) {
+      case ">=":
+        return createNot(createBin("<", left, right));
+      case "<=":
+        return createNot(createBin(">", left, right));
+      case "!=":
+        return createNot(createBin("==", left, right));
+      case "==":
+        const eq = new Instruction();
+        eq.opcode = "operator_equals";
+        eq.inputs.OPERAND1 = left;
+        eq.inputs.OPERAND2 = right;
+        return eq;
+      case "&&":
+        const and = new Instruction();
+        and.opcode = "operator_and";
+        and.inputs.OPERAND1 = left;
+        and.inputs.OPERAND2 = right;
+        return and;
+      case "||":
+        const or = new Instruction();
+        or.opcode = "operator_or";
+        or.inputs.OPERAND1 = left;
+        or.inputs.OPERAND2 = right;
+        return or;
+    }
+
     const newNode = new ComparisonExpression();
     newNode.operator = node.operator;
     newNode.lhs = left;
@@ -346,6 +389,7 @@ class Analyzer {
 
     const instruction = new Instruction();
     instruction.opcode = isaEntry.opcode;
+    instruction.meta = isaEntry;
 
     if (isaEntry.inputs) {
       for (const [inputName, argIndex] of Object.entries(isaEntry.inputs)) {
@@ -443,6 +487,32 @@ class Analyzer {
 
     instruction.body = this.analyzeInstructions(node.block.body);
     return instruction;
+  }
+
+  visitUnaryExpression(node) {
+    const rhs = this.visit(node.rhs);
+
+    if (node.operator === "!" || node.operator === "not") {
+      if (rhs instanceof BooleanValue) {
+        return new BooleanValue(!rhs.value);
+      }
+      const instruction = new Instruction();
+      instruction.opcode = "operator_not";
+      instruction.meta = isa.operators.not;
+      instruction.inputs.OPERAND = rhs;
+      return instruction;
+    }
+
+    if (node.operator === "-") {
+      if (rhs instanceof NumberValue) {
+        return new NumberValue(-rhs.value);
+      }
+      const sub = new BinaryExpression();
+      sub.operator = "-";
+      sub.lhs = new NumberValue(0);
+      sub.rhs = rhs;
+      return sub;
+    }
   }
 }
 
