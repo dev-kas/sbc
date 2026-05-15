@@ -292,24 +292,45 @@ class Analyzer {
 
   visitCallExpression(node) {
     const isaEntry = this.lookupISA(node.callee.symbol);
+
+    let maxArgIndex = -1;
+    if (isaEntry.inputs) {
+      Object.values(isaEntry.inputs).forEach(
+        (idx) => (maxArgIndex = Math.max(maxArgIndex, idx)),
+      );
+    }
+    if (isaEntry.fields) {
+      Object.values(isaEntry.fields).forEach(
+        (idx) => (maxArgIndex = Math.max(maxArgIndex, idx)),
+      );
+    }
+
+    const requiredCount = maxArgIndex + 1;
+    if (node.args.length < requiredCount) {
+      throw new Error(
+        sprintf(
+          "block `%s` requires %d arguments, but only %d were provided on line %d",
+          node.callee.symbol,
+          requiredCount,
+          node.args.length,
+          indexToLineCol(this.source, node.start).line,
+        ),
+      );
+    }
+
     const instruction = new Instruction();
     instruction.opcode = isaEntry.opcode;
 
     if (isaEntry.inputs) {
       for (const [inputName, argIndex] of Object.entries(isaEntry.inputs)) {
-        const argNode = node.args[argIndex];
-        if (argNode) {
-          instruction.inputs[inputName] = this.visit(argNode);
-        }
+        instruction.inputs[inputName] = this.visit(node.args[argIndex]);
       }
     }
 
     if (isaEntry.fields) {
       for (const [fieldName, argIndex] of Object.entries(isaEntry.fields)) {
         const argNode = node.args[argIndex];
-        if (argNode) {
-          instruction.fields[fieldName] = [argNode.raw || argNode.symbol, null];
-        }
+        instruction.fields[fieldName] = [argNode.raw || argNode.symbol, null];
       }
     }
 

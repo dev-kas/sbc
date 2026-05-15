@@ -135,7 +135,7 @@ local max = 20;
 whenFlagClicked {
 	forever {
 		if (x > max) {
-			stop();
+			stop("all");
 		} else {
 			x = x + 500000;
 		}

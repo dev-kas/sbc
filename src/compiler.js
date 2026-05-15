@@ -83,6 +83,20 @@ class Compiler {
       block.inputs[key] = this.compileInput(value, target, blockId);
     }
 
+    if (inst.opcode === "control_stop") {
+      const option = block.fields.STOP_OPTION
+        ? block.fields.STOP_OPTION[0]
+        : "all";
+
+      const hasNext = option === "other scripts in sprite";
+      block.mutation = {
+        tagName: "mutation",
+        children: [],
+        hasnext: hasNext ? "true" : "false",
+      };
+      if (!hasNext) block.next = null;
+    }
+
     if (inst.body) {
       const substackId = this.compileInstructionList(
         inst.body,
