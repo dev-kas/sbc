@@ -173,7 +173,7 @@ code = `
 whenFlagClicked {
 	forever {
 		if (touchingObject("mouse-pointer")) {
-			say("yes");
+			say(of("x position", "sprite") + 50);
 		} else {
 			say("no");
 		}

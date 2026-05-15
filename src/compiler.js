@@ -14,7 +14,7 @@ const SCRATCH_MAGIC_STRINGS = {
   "random-position": "_random_",
   edge: "_edge_",
   myself: "_myself_",
-  stage: "_stage_",
+  Stage: "_stage_",
 };
 
 class Compiler {
@@ -124,6 +124,12 @@ class Compiler {
         hasnext: isCap ? "false" : "true",
       };
       if (isCap) block.next = null;
+    } else if (inst.opcode === "sensing_of") {
+      block.mutation = {
+        tagName: "mutation",
+        children: [],
+        string: block.fields.PROPERTY[0],
+      };
     }
 
     const substacks = { body: "SUBSTACK", elseBody: "SUBSTACK2" };

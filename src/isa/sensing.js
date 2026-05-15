@@ -66,8 +66,9 @@ module.exports = {
   of: {
     opcode: "sensing_of",
     type: "reporter",
-    inputs: { OBJECT: 0 },
+    inputs: { OBJECT: 1 },
     fields: { PROPERTY: 0 },
+    menu: { OBJECT: "sensing_of_object_menu" },
   },
   current: {
     opcode: "sensing_current",
