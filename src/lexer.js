@@ -33,7 +33,13 @@ const isAlpha = (c) => /[a-zA-Z]/.test(c);
 const isDigit = (c) => /[0-9]/.test(c);
 const isIdentCompliant = (c) => /[a-zA-Z0-9_$\.]/.test(c);
 
-const singleCharTokenMap = {
+const operatorMap = {
+  ">=": TokenType.COMPARISONOPERATOR,
+  "<=": TokenType.COMPARISONOPERATOR,
+  "==": TokenType.COMPARISONOPERATOR,
+  "!=": TokenType.COMPARISONOPERATOR,
+  "&&": TokenType.COMPARISONOPERATOR,
+  "||": TokenType.COMPARISONOPERATOR,
   "{": TokenType.LBRACE,
   "}": TokenType.RBRACE,
   "(": TokenType.LPAREN,
@@ -63,6 +69,17 @@ const keywordIdentMap = {
   repeat: TokenType.REPEAT,
 };
 
+function matchOperator(code, i) {
+  const max = Math.min(3, code.length - i);
+  for (let len = max; len > 0; len--) {
+    const chunk = code.slice(i, i + len);
+    if (operatorMap[chunk]) {
+      return [operatorMap[chunk], len, chunk];
+    }
+  }
+  return [null, 0, null];
+}
+
 class Lexer {
   constructor() {
     this.reset();
@@ -82,6 +99,7 @@ class Lexer {
   lex() {
     let buffer = "";
     let i = 0;
+
     while (i < this.code.length) {
       const c = this.code[i];
 
@@ -107,24 +125,36 @@ class Lexer {
           this.state = states.COMMENT;
           i += 2;
         } else {
-          const tokenFromMap = singleCharTokenMap[c];
-          if (!tokenFromMap) {
-            console.warn(
-              sprintf(
-                "warn: unknown char `%s` (0x%x) at line %d col %d",
-                c,
-                c.charCodeAt(0),
-                ...Object.values(indexToLineCol(this.code, i)),
-              ),
-            );
+          const [type, len, raw] = matchOperator(this.code, i);
+
+          if (type) {
+            this.tokens.push({
+              type,
+              raw,
+              start: i,
+              end: i + len,
+            });
+            i += len;
+          } else {
+            if (!operatorMap[c]) {
+              console.warn(
+                sprintf(
+                  "warn: unknown char `%s` (0x%x) at line %d col %d",
+                  c,
+                  c.charCodeAt(0),
+                  ...Object.values(indexToLineCol(this.code, i)),
+                ),
+              );
+            }
+
+            this.tokens.push({
+              type: operatorMap[c] || TokenType.SYMBOL,
+              raw: c,
+              start: i,
+              end: i + 1,
+            });
+            i++;
           }
-          this.tokens.push({
-            type: tokenFromMap || TokenType.SYMBOL,
-            raw: c,
-            start: i,
-            end: i + 1,
-          });
-          i++;
         }
       } else if (this.state === states.IDENT) {
         if (isIdentCompliant(c)) {

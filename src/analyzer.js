@@ -222,7 +222,21 @@ class Analyzer {
   }
 
   visitIdentifier(node) {
-    return this.currentScope.get(node.symbol);
+    try {
+      return this.currentScope.get(node.symbol);
+    } catch (e) {
+      try {
+        const isaEntry = this.lookupISA(node.symbol);
+        if (isaEntry.type === "reporter" || isaEntry.type === "boolean") {
+          const instruction = new Instruction();
+          instruction.opcode = isaEntry.opcode;
+          return instruction;
+        }
+      } catch (isaError) {
+        throw e;
+      }
+      throw e;
+    }
   }
 
   visitNumberPrimitive(node) {
@@ -280,6 +294,18 @@ class Analyzer {
           return new BooleanValue(lVal > rVal);
         case "<":
           return new BooleanValue(lVal < rVal);
+        case ">=":
+          return new BooleanValue(lVal >= rVal);
+        case "<=":
+          return new BooleanValue(lVal <= rVal);
+        case "==":
+          return new BooleanValue(lVal == rVal);
+        case "!=":
+          return new BooleanValue(lVal != rVal);
+        case "&&":
+          return new BooleanValue(lVal && rVal);
+        case "||":
+          return new BooleanValue(lVal || rVal);
       }
     }
 

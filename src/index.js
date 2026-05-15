@@ -130,15 +130,40 @@ whenKeyPressed("space") {
 `;
 
 code = `
-global x = 0;
+local output = "default";
+local middle = 50;
+local high = 100;
+local low = 0;
 whenFlagClicked {
-	repeat (30) {
-		x = x + 1;
+	local value = 20; // random(low, high);
+	if (value >= middle) {
+		if (value == middle) {
+			output = "eq";
+		} else {
+			output = "gt";
+		}
+	} else {
+		output = "lt";
 	}
-	wait(5);
-	repeat until (x < 20) {
-		x = x - 1;
+}
+`;
+
+code = `
+local var = 0;
+whenFlagClicked {
+	forever {
+		var = xPosition;
 	}
+}
+
+whenKeyPressed ("a") {
+	goToXY(xPosition, yPosition);
+}
+
+whenKeyPressed ("b") {
+	local xPosition = 250;
+	global yPosition = 250;
+	goToXY(xPosition, yPosition);
 }
 `;
 

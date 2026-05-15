@@ -1,6 +1,11 @@
 const scratch = require("./scratch");
 const { generate } = require("./id");
-const { NumberValue, StringValue, BooleanValue } = require("./analysisvalues");
+const {
+  NumberValue,
+  StringValue,
+  BooleanValue,
+  Instruction,
+} = require("./analysisvalues");
 const { BinaryExpression, ComparisonExpression } = require("./ast");
 const { sprintf } = require("./utils");
 
@@ -154,6 +159,11 @@ class Compiler {
         topLevel: false,
         shadow: false,
       };
+      return [3, blockId, [4, ""]];
+    }
+
+    if (val instanceof Instruction) {
+      const blockId = this.compileInstruction(val, target, parentId);
       return [3, blockId, [4, ""]];
     }
 
