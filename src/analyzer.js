@@ -295,8 +295,12 @@ class Analyzer {
   }
 
   visitForeverStatement(node) {
-    // TODO: implement
-    throw new Error("TODO: implement");
+    const instruction = new Instruction();
+    instruction.opcode = "control_forever";
+    instruction.body = node.block.body
+      .map((stmt) => this.visit(stmt))
+      .filter((result) => result instanceof Instruction);
+    return instruction;
   }
 }
 

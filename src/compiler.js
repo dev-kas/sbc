@@ -52,31 +52,25 @@ class Compiler {
   }
 
   compileEvent(eventBlock, target) {
+    const hatId = generate("block");
     const hat = new scratch.Block();
     hat.opcode = eventBlock.opcode;
     hat.topLevel = true;
-    hat.x = 0;
-    hat.y = 0;
-
     hat.fields = eventBlock.fields;
+
     for (const [key, value] of Object.entries(eventBlock.inputs)) {
-      hat.inputs[key] = this.compileInput(value, target, null);
+      hat.inputs[key] = this.compileInput(value, target, hatId);
     }
 
-    const hatId = generate("block");
     target.blocks[hatId] = hat;
 
-    let previousBlockId = hatId;
-    eventBlock.instructions.forEach((inst) => {
-      const currentBlockId = this.compileInstruction(
-        inst,
-        target,
-        previousBlockId,
-      );
+    const firstBodyBlockId = this.compileInstructionList(
+      eventBlock.instructions,
+      target,
+      hatId,
+    );
 
-      target.blocks[previousBlockId].next = currentBlockId;
-      previousBlockId = currentBlockId;
-    });
+    hat.next = firstBodyBlockId;
   }
 
   compileInstruction(inst, target, parentId) {
@@ -89,8 +83,18 @@ class Compiler {
       block.inputs[key] = this.compileInput(value, target, blockId);
     }
 
-    block.fields = inst.fields;
+    if (inst.opcode === "control_forever" && inst.body) {
+      const substackId = this.compileInstructionList(
+        inst.body,
+        target,
+        blockId,
+      );
+      if (substackId) {
+        block.inputs.SUBSTACK = [3, substackId, [4, ""]];
+      }
+    }
 
+    block.fields = inst.fields;
     target.blocks[blockId] = block;
     return blockId;
   }
@@ -164,6 +168,33 @@ class Compiler {
       "<": "operator_lt",
     };
     return maps[op];
+  }
+
+  compileInstructionList(instructions, target, parentId) {
+    if (instructions.length === 0) return null;
+
+    let firstBlockId = null;
+    let lastBlockId = null;
+
+    instructions.forEach((inst, index) => {
+      const currentParentId = index === 0 ? parentId : lastBlockId;
+
+      const currentBlockId = this.compileInstruction(
+        inst,
+        target,
+        currentParentId,
+      );
+
+      if (index === 0) {
+        firstBlockId = currentBlockId;
+      } else {
+        target.blocks[lastBlockId].next = currentBlockId;
+      }
+
+      lastBlockId = currentBlockId;
+    });
+
+    return firstBlockId;
   }
 }
 
