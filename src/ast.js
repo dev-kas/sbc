@@ -5,7 +5,7 @@ class Program {
 class EventHook {
   ident;
   args;
-  body;
+  block;
 }
 
 class AssignmentStatement {
@@ -60,6 +60,14 @@ class CallExpression {
   args;
 }
 
+class ForeverStatement {
+  block;
+}
+
+class Block {
+  body;
+}
+
 module.exports = {
   EventHook,
   Program,
@@ -72,4 +80,6 @@ module.exports = {
   ComparisonExpression,
   BinaryExpression,
   CallExpression,
+  ForeverStatement,
+  Block,
 };

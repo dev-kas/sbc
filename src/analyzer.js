@@ -163,7 +163,7 @@ class Analyzer {
     const parentScope = this.currentScope;
     this.currentScope = new Scope(parentScope);
 
-    node.body.forEach((child) => {
+    node.block.body.forEach((child) => {
       const result = this.visit(child);
       if (result instanceof Instruction) {
         block.instructions.push(result);

@@ -12,6 +12,8 @@ const {
   ComparisonExpression,
   BinaryExpression,
   CallExpression,
+  Block,
+  ForeverStatement,
 } = require("./ast");
 
 class Parser {
@@ -116,6 +118,19 @@ class Parser {
     return node;
   }
 
+  parseBlock() {
+    const ast = new Block();
+    const startToken = this.expect(TokenType.LBRACE);
+    ast.body = [];
+    while (!this.match(TokenType.EOF, TokenType.RBRACE)) {
+      ast.body.push(this.parseStatement());
+    }
+    const endToken = this.expect(TokenType.RBRACE);
+    ast.start = startToken.start;
+    ast.end = endToken.end;
+    return ast;
+  }
+
   parseEventHook() {
     // name(...expr) { ...stmt }
     const ast = new EventHook();
@@ -125,13 +140,8 @@ class Parser {
     if (this.at().type === TokenType.LPAREN) {
       ast.args = this.parseArguments();
     } else this.args = [];
-    this.expect(TokenType.LBRACE);
-    ast.body = [];
-    while (!this.match(TokenType.EOF, TokenType.RBRACE)) {
-      ast.body.push(this.parseStatement());
-    }
-    const endToken = this.expect(TokenType.RBRACE);
-    ast.end = endToken.end;
+    ast.block = this.parseBlock();
+    ast.end = this.at().start;
     return ast;
   }
 
@@ -148,6 +158,9 @@ class Parser {
         } else {
           result = this.parseAssignmentStatement();
         }
+        break;
+      case TokenType.FOREVER:
+        result = this.parseForeverStatement();
         break;
       default:
         result = this.parseExpression();
@@ -288,6 +301,10 @@ class Parser {
     node.args = this.parseArguments();
     node.end = this.at().start;
     return node;
+  }
+
+  parseForeverStatement() {
+    const node = new ForeverStatement();
   }
 }
 
