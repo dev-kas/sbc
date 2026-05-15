@@ -15,6 +15,7 @@ const {
   Block,
   ForeverStatement,
   IfStatement,
+  RepeatStatement,
 } = require("./ast");
 
 class Parser {
@@ -169,6 +170,10 @@ class Parser {
         break;
       case TokenType.IF:
         result = this.parseIfStatement();
+        ignoreSemi = true;
+        break;
+      case TokenType.REPEAT:
+        result = this.parseRepeatStatement();
         ignoreSemi = true;
         break;
       default:
@@ -335,6 +340,26 @@ class Parser {
       this.advance(); // else
       node.fail = this.parseBlock();
     }
+    node.end = this.at().start;
+    return node;
+  }
+
+  parseRepeatStatement() {
+    const node = new RepeatStatement();
+    node.start = this.advance().start; // repeat
+
+    if (this.match(TokenType.IDENT) && this.at().raw === "until") {
+      this.advance(); // until
+      this.expect(TokenType.LPAREN);
+      node.untilCond = this.parseExpression();
+      this.expect(TokenType.RPAREN);
+    } else {
+      this.expect(TokenType.LPAREN);
+      node.timesCount = this.parseExpression();
+      this.expect(TokenType.RPAREN);
+    }
+
+    node.block = this.parseBlock();
     node.end = this.at().start;
     return node;
   }

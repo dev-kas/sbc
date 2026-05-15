@@ -403,6 +403,21 @@ class Analyzer {
 
     return instruction;
   }
+
+  visitRepeatStatement(node) {
+    const instruction = new Instruction();
+
+    if (node.untilCond) {
+      instruction.opcode = "control_repeat_until";
+      instruction.inputs.CONDITION = this.visit(node.untilCond);
+    } else if (node.timesCount) {
+      instruction.opcode = "control_repeat";
+      instruction.inputs.TIMES = this.visit(node.timesCount);
+    }
+
+    instruction.body = this.analyzeInstructions(node.block.body);
+    return instruction;
+  }
 }
 
 module.exports = {

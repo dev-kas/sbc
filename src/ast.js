@@ -74,6 +74,12 @@ class IfStatement {
   fail;
 }
 
+class RepeatStatement {
+  untilCond;
+  timesCount;
+  block;
+}
+
 module.exports = {
   EventHook,
   Program,
@@ -89,4 +95,5 @@ module.exports = {
   ForeverStatement,
   Block,
   IfStatement,
+  RepeatStatement,
 };

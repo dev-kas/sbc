@@ -25,6 +25,7 @@ const TokenType = enumify([
   "FOREVER",
   "IF",
   "ELSE",
+  "REPEAT",
 ]);
 
 const isWhitespace = (c) => /\s/.test(c);
@@ -59,6 +60,7 @@ const keywordIdentMap = {
   forever: TokenType.FOREVER,
   if: TokenType.IF,
   else: TokenType.ELSE,
+  repeat: TokenType.REPEAT,
 };
 
 class Lexer {

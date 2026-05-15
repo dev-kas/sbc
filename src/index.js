@@ -131,14 +131,13 @@ whenKeyPressed("space") {
 
 code = `
 global x = 0;
-local max = 20;
 whenFlagClicked {
-	forever {
-		if (x > max) {
-			stop("all");
-		} else {
-			x = x + 500000;
-		}
+	repeat (30) {
+		x = x + 1;
+	}
+	wait(5);
+	repeat until (x < 20) {
+		x = x - 1;
 	}
 }
 `;
