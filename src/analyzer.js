@@ -1,4 +1,4 @@
-const { sprintf } = require("./utils");
+const { sprintf, indexToLineCol } = require("./utils");
 const isa = require("./isa");
 const { generate } = require("./id");
 const {
@@ -10,6 +10,12 @@ const {
   Instruction,
 } = require("./analysisvalues");
 const { ComparisonExpression, BinaryExpression } = require("./ast");
+
+const TERMINATORS = [
+  "control_forever",
+  "control_stop",
+  "control_delete_this_clone",
+];
 
 class Scope {
   constructor(parent = null) {
@@ -61,9 +67,11 @@ class Analyzer {
     this.blocks = [];
     this.scopes = [];
     this.currentScope = null;
+    this.source = "";
   }
 
-  analyze(node) {
+  analyze(source, node) {
+    this.source = source;
     return this.visit(node);
   }
 
@@ -163,10 +171,24 @@ class Analyzer {
     const parentScope = this.currentScope;
     this.currentScope = new Scope(parentScope);
 
+    let terminated = false;
     node.block.body.forEach((child) => {
       const result = this.visit(child);
       if (result instanceof Instruction) {
+        if (terminated) {
+          throw new Error(
+            sprintf(
+              "unreachable code detected on line %d",
+              indexToLineCol(this.source, child.start).line,
+            ),
+          );
+        }
+
         block.instructions.push(result);
+
+        if (TERMINATORS.includes(result.opcode)) {
+          terminated = true;
+        }
       }
     });
 
@@ -297,9 +319,26 @@ class Analyzer {
   visitForeverStatement(node) {
     const instruction = new Instruction();
     instruction.opcode = "control_forever";
-    instruction.body = node.block.body
-      .map((stmt) => this.visit(stmt))
-      .filter((result) => result instanceof Instruction);
+    instruction.body = [];
+
+    let terminated = false;
+    node.block.body.forEach((stmt) => {
+      const result = this.visit(stmt);
+      if (result instanceof Instruction) {
+        if (terminated) {
+          throw new Error(
+            sprintf(
+              "unreachable code inside forever loop on line %d",
+              indexToLineCol(this.source, child.start).line,
+            ),
+          );
+        }
+        instruction.body.push(result);
+        if (TERMINATORS.includes(result.opcode)) {
+          terminated = true;
+        }
+      }
+    });
     return instruction;
   }
 }

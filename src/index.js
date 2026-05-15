@@ -135,6 +135,7 @@ whenFlagClicked {
 	forever {
 		x = x + 1;
 	}
+	goToXY(20, 20);
 }
 `;
 
@@ -153,7 +154,7 @@ console.log("AST:");
 console.dir(ast, { depth: null });
 
 const analyzer = new Analyzer();
-analyzer.analyze(ast);
+analyzer.analyze(code, ast);
 console.log("ANALYSIS:");
 console.dir(analyzer, { depth: null });
 
