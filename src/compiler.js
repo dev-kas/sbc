@@ -9,6 +9,14 @@ const {
 const { BinaryExpression, ComparisonExpression } = require("./ast");
 const { sprintf } = require("./utils");
 
+const SCRATCH_MAGIC_STRINGS = {
+  "mouse-pointer": "_mouse_",
+  "random-position": "_random_",
+  edge: "_edge_",
+  myself: "_myself_",
+  stage: "_stage_",
+};
+
 class Compiler {
   constructor() {
     this.reset();
@@ -82,7 +90,27 @@ class Compiler {
     block.fields = inst.fields;
 
     for (const [key, val] of Object.entries(inst.inputs)) {
-      block.inputs[key] = this.compileInput(val, target, blockId);
+      const menuOpcode = inst.meta?.menus?.[key];
+      if (
+        menuOpcode &&
+        (val instanceof StringValue || val instanceof NumberValue)
+      ) {
+        const menuId = generate("menu");
+        const rawValue = val.value.toString();
+        const sanitizedValue = SCRATCH_MAGIC_STRINGS[rawValue] || rawValue;
+        target.blocks[menuId] = {
+          opcode: menuOpcode,
+          next: null,
+          parent: blockId,
+          inputs: {},
+          fields: { [key]: [sanitizedValue, null] },
+          shadow: true,
+          topLevel: false,
+        };
+        block.inputs[key] = [scratch.InputStatus.SHADOW, menuId];
+      } else {
+        block.inputs[key] = this.compileInput(val, target, blockId);
+      }
     }
 
     if (inst.opcode === "control_stop") {

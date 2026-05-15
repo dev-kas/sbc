@@ -159,10 +159,10 @@ class Parser {
         result = this.parseVariableDeclaration();
         break;
       case TokenType.IDENT:
-        if (this.peek().type === TokenType.LPAREN) {
-          result = this.parseCallExpression();
-        } else {
+        if (this.peek().type === TokenType.EQUAL) {
           result = this.parseAssignmentStatement();
+        } else {
+          result = this.parseExpression();
         }
         break;
       case TokenType.FOREVER:
@@ -207,7 +207,16 @@ class Parser {
   }
 
   parsePrimaryExpression() {
-    let token = this.advance();
+    let token = this.at();
+
+    if (
+      token.type === TokenType.IDENT &&
+      this.peek().type === TokenType.LPAREN
+    ) {
+      return this.parseCallExpression();
+    }
+    this.advance();
+
     let node;
     const start = token.start;
     switch (token.type) {

@@ -3,6 +3,7 @@ module.exports = {
     opcode: "sensing_touchingobject",
     type: "boolean",
     inputs: { TOUCHINGOBJECTMENU: 0 },
+    menus: { TOUCHINGOBJECTMENU: "sensing_touchingobjectmenu" },
   },
   touchingColor: {
     opcode: "sensing_touchingcolor",

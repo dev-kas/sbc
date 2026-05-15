@@ -170,11 +170,13 @@ whenKeyPressed ("b") {
 `;
 
 code = `
-local var = 0;
 whenFlagClicked {
-	var = -2;
-	if (var <= -2) {
-		var = !!var;
+	forever {
+		if (touchingObject("mouse-pointer")) {
+			say("yes");
+		} else {
+			say("no");
+		}
 	}
 }
 `;
