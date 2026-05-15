@@ -23,6 +23,8 @@ const TokenType = enumify([
   "COMPARISONOPERATOR",
   "BINARYOPERATOR",
   "FOREVER",
+  "IF",
+  "ELSE",
 ]);
 
 const isWhitespace = (c) => /\s/.test(c);
@@ -55,6 +57,8 @@ const keywordIdentMap = {
   true: TokenType.BOOLEAN,
   false: TokenType.BOOLEAN,
   forever: TokenType.FOREVER,
+  if: TokenType.IF,
+  else: TokenType.ELSE,
 };
 
 class Lexer {

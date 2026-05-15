@@ -83,7 +83,7 @@ class Compiler {
       block.inputs[key] = this.compileInput(value, target, blockId);
     }
 
-    if (inst.opcode === "control_forever" && inst.body) {
+    if (inst.body) {
       const substackId = this.compileInstructionList(
         inst.body,
         target,
@@ -91,6 +91,17 @@ class Compiler {
       );
       if (substackId) {
         block.inputs.SUBSTACK = [3, substackId, [4, ""]];
+      }
+    }
+
+    if (inst.elseBody) {
+      const substack2Id = this.compileInstructionList(
+        inst.elseBody,
+        target,
+        blockId,
+      );
+      if (substack2Id) {
+        block.inputs.SUBSTACK2 = [3, substack2Id, [4, ""]];
       }
     }
 

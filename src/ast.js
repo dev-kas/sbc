@@ -68,6 +68,12 @@ class Block {
   body;
 }
 
+class IfStatement {
+  cond;
+  pass;
+  fail;
+}
+
 module.exports = {
   EventHook,
   Program,
@@ -82,4 +88,5 @@ module.exports = {
   CallExpression,
   ForeverStatement,
   Block,
+  IfStatement,
 };

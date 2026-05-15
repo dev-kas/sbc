@@ -341,6 +341,47 @@ class Analyzer {
     });
     return instruction;
   }
+
+  analyzeInstructions(body) {
+    const instructions = [];
+    let terminated = false;
+
+    body.forEach((child) => {
+      const result = this.visit(child);
+      if (result instanceof Instruction) {
+        if (terminated) {
+          throw new Error(
+            sprintf(
+              "unreachable code on line %d",
+              indexToLineCol(this.source, child.start).line,
+            ),
+          );
+        }
+        instructions.push(result);
+        if (TERMINATORS.includes(result.opcode)) {
+          terminated = true;
+        }
+      }
+    });
+    return instructions;
+  }
+
+  visitIfStatement(node) {
+    const instruction = new Instruction();
+
+    instruction.inputs.CONDITION = this.visit(node.cond);
+
+    if (node.fail) {
+      instruction.opcode = "control_if_else";
+      instruction.body = this.analyzeInstructions(node.pass.body);
+      instruction.elseBody = this.analyzeInstructions(node.fail.body);
+    } else {
+      instruction.opcode = "control_if";
+      instruction.body = this.analyzeInstructions(node.pass.body);
+    }
+
+    return instruction;
+  }
 }
 
 module.exports = {

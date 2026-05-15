@@ -14,6 +14,7 @@ const {
   CallExpression,
   Block,
   ForeverStatement,
+  IfStatement,
 } = require("./ast");
 
 class Parser {
@@ -166,6 +167,10 @@ class Parser {
         result = this.parseForeverStatement();
         ignoreSemi = true;
         break;
+      case TokenType.IF:
+        result = this.parseIfStatement();
+        ignoreSemi = true;
+        break;
       default:
         result = this.parseExpression();
         break;
@@ -315,6 +320,21 @@ class Parser {
     const node = new ForeverStatement();
     node.start = this.expect(TokenType.FOREVER).start;
     node.block = this.parseBlock();
+    node.end = this.at().start;
+    return node;
+  }
+
+  parseIfStatement() {
+    const node = new IfStatement();
+    node.start = this.advance().start; // if
+    this.expect(TokenType.LPAREN);
+    node.cond = this.parseExpression();
+    this.expect(TokenType.RPAREN);
+    node.pass = this.parseBlock();
+    if (this.at().type === TokenType.ELSE) {
+      this.advance(); // else
+      node.fail = this.parseBlock();
+    }
     node.end = this.at().start;
     return node;
   }
