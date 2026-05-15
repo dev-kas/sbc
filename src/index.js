@@ -132,9 +132,9 @@ whenKeyPressed("space") {
 code = `
 global x = 0;
 whenFlagClicked {
-//	forever {
+	forever {
 		x = x + 1;
-//	}
+	}
 }
 `;
 

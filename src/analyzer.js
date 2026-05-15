@@ -293,6 +293,11 @@ class Analyzer {
 
     return instruction;
   }
+
+  visitForeverStatement(node) {
+    // TODO: implement
+    throw new Error("TODO: implement");
+  }
 }
 
 module.exports = {

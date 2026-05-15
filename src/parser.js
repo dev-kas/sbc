@@ -147,6 +147,7 @@ class Parser {
 
   parseStatement() {
     let result = null;
+    let ignoreSemi = false;
     switch (this.at().type) {
       case TokenType.GLOBAL:
       case TokenType.LOCAL:
@@ -161,13 +162,18 @@ class Parser {
         break;
       case TokenType.FOREVER:
         result = this.parseForeverStatement();
+        ignoreSemi = true;
         break;
       default:
         result = this.parseExpression();
         break;
     }
-    const semi = this.expect(TokenType.SEMICOLON);
-    if (result) result.end = semi.end;
+    if (!ignoreSemi) {
+      const semi = this.expect(TokenType.SEMICOLON);
+      if (result) result.end = semi.end;
+    } else {
+      if (result) result.end = this.at().start;
+    }
     return result;
   }
 
@@ -305,6 +311,10 @@ class Parser {
 
   parseForeverStatement() {
     const node = new ForeverStatement();
+    node.start = this.expect(TokenType.FOREVER).start;
+    node.block = this.parseBlock();
+    node.end = this.at().start;
+    return node;
   }
 }
 
