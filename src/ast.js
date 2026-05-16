@@ -98,6 +98,13 @@ class ListAccessNode {
   }
 }
 
+class FunctionDeclaration {
+  name;
+  params;
+  block;
+  warp = false;
+}
+
 module.exports = {
   EventHook,
   Program,
@@ -117,4 +124,5 @@ module.exports = {
   UnaryExpression,
   ArrayLiteral,
   ListAccessNode,
+  FunctionDeclaration,
 };

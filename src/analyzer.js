@@ -13,6 +13,7 @@ const {
   ComparisonExpression,
   BinaryExpression,
   ArrayLiteral,
+  FunctionDeclaration,
 } = require("./ast");
 
 const TERMINATORS = [
@@ -87,6 +88,7 @@ class Analyzer {
     this.blocks = [];
     this.scopes = [];
     this.currentScope = null;
+    this.procedures = new Map();
     this.source = "";
   }
 
@@ -106,6 +108,22 @@ class Analyzer {
   visitProgram(node) {
     this.currentScope = new Scope();
     this.scopes.push(this.currentScope);
+
+    node.body.forEach((child) => {
+      if (child instanceof FunctionDeclaration) {
+        const name = child.name.symbol;
+        const proccode =
+          name +
+          (child.params.length > 0
+            ? " " + child.params.map(() => "%s").join(" ")
+            : "");
+        this.procedures.set(name, {
+          params: child.params,
+          proccode: proccode,
+          warp: child.warp,
+        });
+      }
+    });
 
     node.body.forEach((child) => {
       this.visit(child);
@@ -255,6 +273,15 @@ class Analyzer {
     try {
       return this.currentScope.get(node.symbol);
     } catch (e) {
+      if (
+        this.currentScope.parameters &&
+        this.currentScope.parameters.has(node.symbol)
+      ) {
+        const inst = new Instruction();
+        inst.opcode = "argument_reporter_string_number";
+        inst.fields.VALUE = [node.symbol, null];
+        return inst;
+      }
       try {
         const isaEntry = this.lookupISA(node.symbol);
         if (isaEntry.type === "reporter" || isaEntry.type === "boolean") {
@@ -391,6 +418,20 @@ class Analyzer {
 
   visitCallExpression(node) {
     const name = node.callee.symbol;
+
+    if (this.procedures.has(name)) {
+      const proc = this.procedures.get(name);
+      const inst = new Instruction();
+      inst.opcode = "procedures_call";
+      inst.proccode = proc.proccode;
+      inst.warp = proc.warp;
+
+      node.args.forEach((arg, i) => {
+        inst.inputs[`arg${i}`] = this.visit(arg);
+      });
+
+      return inst;
+    }
 
     // abstractions
     if (name.includes(".")) {
@@ -613,6 +654,25 @@ class Analyzer {
       }
       return val;
     });
+  }
+
+  visitFunctionDeclaration(node) {
+    const procData = this.procedures.get(node.name.symbol);
+
+    const block = new EventBlock();
+    block.opcode = "procedures_definition";
+    block.proccode = procData.proccode;
+    block.warp = procData.warp;
+
+    const parentScope = this.currentScope;
+    this.currentScope = new Scope(parentScope);
+    this.currentScope.parameters = new Set(node.params);
+
+    block.instructions = this.analyzeInstructions(node.block.body);
+
+    this.scopes.push(this.currentScope);
+    this.currentScope = parentScope;
+    this.blocks.push(block);
   }
 }
 

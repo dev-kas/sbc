@@ -149,24 +149,12 @@ whenFlagClicked {
 `;
 
 code = `
-local scores = [10, 20, 30];
-local i = 0;
-local current = 0;
-
 whenFlagClicked {
-    scores.push(50);
-    scores.add(100);
-    
-    repeat (scores.length()) {
-        current = scores[i];
-        if (current > 25) {
-            say(current); 
-        }
-        
-        i = i + 1;
-    }
-    
-    scores.delete(0);
+	meow();
+}
+
+func meow () {
+	say("meow");
 }
 `;
 

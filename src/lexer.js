@@ -27,6 +27,7 @@ const TokenType = enumify([
   "IF",
   "ELSE",
   "REPEAT",
+  "FUNC",
 ]);
 
 const isWhitespace = (c) => /\s/.test(c);
@@ -69,6 +70,7 @@ const keywordIdentMap = {
   if: TokenType.IF,
   else: TokenType.ELSE,
   repeat: TokenType.REPEAT,
+  func: TokenType.FUNC,
 };
 
 function matchOperator(code, i) {

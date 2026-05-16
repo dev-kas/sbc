@@ -19,6 +19,7 @@ const {
   UnaryExpression,
   ArrayLiteral,
   ListAccessNode,
+  FunctionDeclaration,
 } = require("./ast");
 
 class Parser {
@@ -92,6 +93,8 @@ class Parser {
       return ast;
     } else if (this.match(TokenType.IDENT)) {
       return this.parseEventHook();
+    } else if (this.match(TokenType.FUNC)) {
+      return this.parseFunctionDeclaration();
     }
   }
 
@@ -419,6 +422,34 @@ class Parser {
     arr.start = start;
     arr.end = end;
     return arr;
+  }
+
+  parseFunctionDeclaration() {
+    const decl = new FunctionDeclaration();
+    this.expect(TokenType.FUNC);
+
+    if (this.at().type === TokenType.IDENT && this.at().raw === "warp") {
+      decl.warp = true;
+      this.advance();
+    }
+
+    decl.name = this.parseIdentifier();
+
+    this.expect(TokenType.LPAREN);
+    decl.params = [];
+    while (!this.match(TokenType.RPAREN) && !this.match(TokenType.EOF)) {
+      decl.params.push(this.parseIdentifier().symbol);
+      if (this.match(TokenType.COMMA)) {
+        this.advance();
+      } else {
+        break;
+      }
+    }
+    this.expect(TokenType.RPAREN);
+
+    decl.block = this.parseBlock();
+
+    return decl;
   }
 }
 

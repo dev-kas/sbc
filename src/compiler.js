@@ -77,6 +77,35 @@ class Compiler {
     hat.topLevel = true;
     hat.fields = eventBlock.fields;
 
+    if (eventBlock.opcode === "procedures_definition") {
+      const prototypeId = generate("prototype");
+
+      const argNames = eventBlock.params || [];
+      const argIds = argNames.map((_, i) => `arg${i}`);
+      const argDefaults = argNames.map(() => "");
+
+      target.blocks[prototypeId] = {
+        opcode: "procedures_prototype",
+        next: null,
+        parent: hatId,
+        inputs: {},
+        fields: {},
+        shadow: false,
+        topLevel: false,
+        mutation: {
+          tagName: "mutation",
+          children: [],
+          proccode: eventBlock.proccode,
+          argumentnames: JSON.stringify(argNames),
+          argumentids: JSON.stringify(argIds),
+          argumentdefaults: JSON.stringify(argDefaults),
+          warp: eventBlock.warp ? "true" : "false",
+        },
+      };
+
+      hat.inputs.custom_block = [2, prototypeId];
+    }
+
     for (const [key, val] of Object.entries(eventBlock.inputs)) {
       hat.inputs[key] = this.compileInput(val, target, hatId);
     }
@@ -118,6 +147,18 @@ class Compiler {
       } else {
         block.inputs[key] = this.compileInput(val, target, blockId);
       }
+    }
+
+    if (inst.opcode === "procedures_call") {
+      const argIds = Object.keys(inst.inputs);
+
+      block.mutation = {
+        tagName: "mutation",
+        children: [],
+        proccode: inst.proccode,
+        argumentids: JSON.stringify(argIds),
+        warp: inst.warp ? "true" : "false",
+      };
     }
 
     if (inst.opcode === "control_stop") {
@@ -196,6 +237,24 @@ class Compiler {
         opcode: "data_variable",
         fields: { VARIABLE: [val.symbol || "unknown", val.id] },
         parent: parentId,
+        inputs: {},
+        next: null,
+        topLevel: false,
+        shadow: false,
+      };
+      return [
+        scratch.InputStatus.BLOCK,
+        blockId,
+        [scratch.MathValues.STRING, ""],
+      ];
+    }
+
+    if (val.opcode === "argument_reporter_string_number") {
+      const blockId = generate("block");
+      target.blocks[blockId] = {
+        opcode: val.opcode,
+        parent: parentId,
+        fields: val.fields,
         inputs: {},
         next: null,
         topLevel: false,
