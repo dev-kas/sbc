@@ -108,6 +108,18 @@ class Parser {
       return this.parseFunctionDeclaration();
     } else if (this.match(TokenType.SPRITE)) {
       return this.parseSpriteDeclaration();
+    } else if (this.match(TokenType.SEMICOLON)) {
+      return this.advance();
+    } else {
+      const token = this.at();
+      throw new Error(
+        sprintf(
+          "unexpected token `%s` (%s) at top level on line %d",
+          token.raw,
+          token.type,
+          indexToLineCol(this.source, token.start).line,
+        ),
+      );
     }
   }
 

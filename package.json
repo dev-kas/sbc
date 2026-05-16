@@ -12,5 +12,8 @@
   "main": "src/index.js",
   "scripts": {
     "test": "node ."
+  },
+  "dependencies": {
+    "fs-adapters": "^7.0.2"
   }
 }
