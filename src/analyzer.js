@@ -81,7 +81,13 @@ class Scope {
 }
 
 class Analyzer {
-  constructor() {
+  constructor(options) {
+    this.options = options;
+    this.error =
+      options?.error ||
+      ((e) => {
+        throw new Error(e);
+      });
     this.reset();
   }
 
@@ -168,12 +174,12 @@ class Analyzer {
 
       const ns = isa[namespace];
       if (!ns) {
-        throw new Error(sprintf("unknown opcode namespace `%s`", namespace));
+        this.error(sprintf("unknown opcode namespace `%s`", namespace));
       }
 
       const opcode = ns[name];
       if (!opcode) {
-        throw new Error(
+        this.error(
           sprintf(
             "unknown opcode alias `%s` under namespace `%s`",
             name,
@@ -191,7 +197,7 @@ class Analyzer {
       }
     }
 
-    throw new Error(sprintf("unknown opcode alias `%s`", opcodeAlias));
+    this.error(sprintf("unknown opcode alias `%s`", opcodeAlias));
   }
 
   visitEventHook(node) {
@@ -521,7 +527,7 @@ class Analyzer {
 
     const requiredCount = maxArgIndex + 1;
     if (node.args.length < requiredCount) {
-      throw new Error(
+      this.error(
         sprintf(
           "block `%s` requires %d arguments, but only %d were provided on line %d",
           name,
@@ -567,7 +573,7 @@ class Analyzer {
       const result = this.visit(child);
       if (result instanceof Instruction) {
         if (terminated) {
-          throw new Error(
+          this.error(
             sprintf(
               "unreachable code on line %d",
               indexToLineCol(this.source, child.start).line,
@@ -700,7 +706,7 @@ class Analyzer {
       const result = this.visit(child);
       if (result instanceof Instruction) {
         if (terminated) {
-          throw new Error(
+          this.error(
             sprintf(
               "unreachable code detected on line %d",
               indexToLineCol(this.source, child.start).line,

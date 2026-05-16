@@ -49,6 +49,7 @@ const preprocessor = new Preprocessor(
 	`,
   }),
 );
+
 preprocessor.process(code, "main").then((code) => {
   console.log("PREPROCESSED");
   console.log(code);

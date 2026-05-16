@@ -1,9 +1,16 @@
 const { sprintf } = require("./utils");
 
 class Preprocessor {
-  constructor(fs) {
-    this.fs = fs;
+  constructor(fs, options) {
     this.reset();
+    this.fs = fs;
+    this.options = options;
+    this.error =
+      options?.error ||
+      ((e) => {
+        throw new Error(e);
+      });
+    this.error = options?.warn || console.warn;
   }
 
   reset() {
@@ -52,7 +59,7 @@ class Preprocessor {
             output.push(""); // preserve line coune
           }
         } catch (err) {
-          throw new Error(
+          this.error(
             sprintf(
               "%s:%d: fatal error: %s",
               currentFile,
@@ -69,7 +76,7 @@ class Preprocessor {
         try {
           output.push(this.expandMacros(line));
         } catch (err) {
-          throw new Error(
+          this.error(
             sprintf(
               "%s:%d: macro expansion error: %s",
               currentFile,
@@ -84,7 +91,7 @@ class Preprocessor {
     }
 
     if (conditionStack.length > 1) {
-      throw new Error(
+      this.error(
         sprintf(
           "%s: fatal error: unterminated #if block at end of file",
           currentFile,
@@ -128,7 +135,7 @@ class Preprocessor {
         return;
       }
       case "elif": {
-        if (stack.length === 1) throw new Error("#elif without #if");
+        if (stack.length === 1) this.error("#elif without #if");
         if (!parentState) return;
 
         if (currentState.handled) {
@@ -141,7 +148,7 @@ class Preprocessor {
         return;
       }
       case "else": {
-        if (stack.length === 1) throw new Error("#else without #if");
+        if (stack.length === 1) this.error("#else without #if");
         if (!parentState) return;
 
         currentState.active = !currentState.handled;
@@ -149,7 +156,7 @@ class Preprocessor {
         return;
       }
       case "endif": {
-        if (stack.length === 1) throw new Error("#endif without #if");
+        if (stack.length === 1) this.error("#endif without #if");
         stack.pop();
         return;
       }
@@ -174,15 +181,15 @@ class Preprocessor {
         break;
       }
       case "error": {
-        throw new Error(sprintf("#error %s", args));
+        this.error(sprintf("#error %s", args));
       }
       case "include": {
         return { includeContent: await this.handleInclude(args, currentFile) };
       }
       default:
-        console.warn(
+        this.warn(
           sprintf(
-            "Warning: Unknown directive '#%s' at %s:%d",
+            "warning: unknown directive '#%s' at %s:%d",
             directive,
             currentFile,
             lineNum,
@@ -224,13 +231,13 @@ class Preprocessor {
     //  no <filename> for now umm maybe do that later
     const match = args.match(/^"([^"]+)"$/);
     if (!match)
-      throw new Error('invalid #include syntax; expected #include "filename"');
+      this.error('invalid #include syntax; expected #include "filename"');
 
     const filename = match[1];
     const fullPath = this.resolvePath(currentFile, filename);
 
     if (!(await this.fs.exists(fullPath))) {
-      throw new Error(sprintf("Cannot find include file '%s'", filename));
+      this.error(sprintf("cannot find include file '%s'", filename));
     }
 
     if (this.pragmaOnceFiles.has(fullPath)) {
@@ -257,7 +264,7 @@ class Preprocessor {
     try {
       return !!new Function(`return (${processed});`)(); // safe cuz cleaned
     } catch (e) {
-      throw new Error(sprintf("Invalid expression in #if: '%s'", expr));
+      this.error(sprintf("invalid expression in #if: '%s'", expr));
     }
   }
 

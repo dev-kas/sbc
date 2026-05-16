@@ -125,8 +125,33 @@ function sprintf(fmt, ...args) {
   );
 }
 
+function merge(a, b) {
+  const out = { ...a };
+
+  for (const key in b) {
+    const av = a[key];
+    const bv = b[key];
+
+    if (
+      av &&
+      bv &&
+      typeof av === "object" &&
+      typeof bv === "object" &&
+      !Array.isArray(av) &&
+      !Array.isArray(bv)
+    ) {
+      out[key] = merge(av, bv);
+    } else {
+      out[key] = bv;
+    }
+  }
+
+  return out;
+}
+
 module.exports = {
   enumify,
   indexToLineCol,
   sprintf,
+  merge,
 };

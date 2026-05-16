@@ -87,7 +87,9 @@ function matchOperator(code, i) {
 }
 
 class Lexer {
-  constructor() {
+  constructor(options) {
+    this.options = options;
+    this.warn = options?.warn || console.warn;
     this.reset();
   }
 
@@ -143,7 +145,7 @@ class Lexer {
             i += len;
           } else {
             if (!operatorMap[c]) {
-              console.warn(
+              this.warn(
                 sprintf(
                   "warn: unknown char `%s` (0x%x) at line %d col %d",
                   c,

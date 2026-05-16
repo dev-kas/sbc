@@ -24,7 +24,13 @@ const {
 } = require("./ast");
 
 class Parser {
-  constructor() {
+  constructor(options) {
+    this.options = options;
+    this.error =
+      options?.error ||
+      ((e) => {
+        throw new Error(e);
+      });
     this.reset();
   }
 
@@ -53,7 +59,7 @@ class Parser {
   expect(type) {
     const token = this.at();
     if (token.type !== type)
-      throw new Error(
+      this.error(
         sprintf(
           "unexpected token `%s` on line %d, expected %s, got %s",
           token.raw,
@@ -86,7 +92,7 @@ class Parser {
 
   parseTopLevelDeclaration() {
     if (this.match(TokenType.LOCAL)) {
-      throw new Error(
+      this.error(
         sprintf(
           "'local' declarations are not allowed at the top level; did you mean 'global'? (line %d)",
           indexToLineCol(this.source, this.at().start).line,
@@ -112,7 +118,7 @@ class Parser {
       return this.advance();
     } else {
       const token = this.at();
-      throw new Error(
+      this.error(
         sprintf(
           "unexpected token `%s` (%s) at top level on line %d",
           token.raw,
@@ -307,7 +313,7 @@ class Parser {
         token = this.expect(TokenType.RPAREN);
         break;
       default:
-        throw new Error(
+        this.error(
           sprintf(
             "unexpected token `%s` (%s) at line %d",
             token.raw,

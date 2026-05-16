@@ -18,7 +18,8 @@ const SCRATCH_MAGIC_STRINGS = {
 };
 
 class Compiler {
-  constructor() {
+  constructor(options) {
+    this.options = options;
     this.reset();
   }
 
