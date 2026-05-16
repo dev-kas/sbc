@@ -85,10 +85,19 @@ class Parser {
   }
 
   parseTopLevelDeclaration() {
-    // could be global/local variable declaration
+    if (this.match(TokenType.LOCAL)) {
+      throw new Error(
+        sprintf(
+          "'local' declarations are not allowed at the top level; did you mean 'global'? (line %d)",
+          indexToLineCol(this.source, this.at().start).line,
+        ),
+      );
+    }
+
+    // could be global variable declaration
     // or a top-level event hook block (for stage)
     // or sprite declaration
-    if (this.match(TokenType.GLOBAL, TokenType.LOCAL)) {
+    if (this.match(TokenType.GLOBAL)) {
       const ast = this.parseVariableDeclaration();
       const semi = this.expect(TokenType.SEMICOLON);
       ast.end = semi.end;

@@ -112,8 +112,10 @@ class Analyzer {
 
   visitSpriteDeclaration(node) {
     const prevTarget = this.currentTarget;
-    this.currentTarget = node.name;
+    const prevScope = this.currentScope;
 
+    this.currentTarget = node.name;
+    this.currentScope = new Scope(prevScope);
     if (!this.targets.has(this.currentTarget)) {
       this.targets.set(this.currentTarget, {
         blocks: [],
@@ -123,6 +125,7 @@ class Analyzer {
     }
 
     node.body.forEach((child) => this.visit(child));
+    this.currentScope = prevScope;
     this.currentTarget = prevTarget;
   }
 
@@ -203,7 +206,6 @@ class Analyzer {
         const argNode = node.args[argIndex];
         if (argNode) {
           const evaluated = this.visit(argNode);
-
           let finalValue;
 
           if (
@@ -232,32 +234,7 @@ class Analyzer {
       }
     }
 
-    const parentScope = this.currentScope;
-    this.currentScope = new Scope(parentScope);
-
-    let terminated = false;
-    node.block.body.forEach((child) => {
-      const result = this.visit(child);
-      if (result instanceof Instruction) {
-        if (terminated) {
-          throw new Error(
-            sprintf(
-              "unreachable code detected on line %d",
-              indexToLineCol(this.source, child.start).line,
-            ),
-          );
-        }
-
-        block.instructions.push(result);
-
-        if (TERMINATORS.includes(result.opcode)) {
-          terminated = true;
-        }
-      }
-    });
-
-    this.scopes.push(this.currentScope);
-    this.currentScope = parentScope;
+    block.instructions = this.visitBlock(node.block);
     this.targets.get(this.currentTarget).blocks.push(block);
   }
 
@@ -292,6 +269,15 @@ class Analyzer {
         id: varInfo.id,
         value: varInfo.value,
       });
+    }
+
+    if (!node.global && this.currentScope.parent !== null) {
+      const variable = this.currentScope.get(node.ident.symbol);
+      const instruction = new Instruction();
+      instruction.opcode = "data_setvariableto";
+      instruction.fields.VARIABLE = [node.ident.symbol, variable.id];
+      instruction.inputs.VALUE = evaluatedValue;
+      return instruction;
     }
   }
 
@@ -569,26 +555,7 @@ class Analyzer {
   visitForeverStatement(node) {
     const instruction = new Instruction();
     instruction.opcode = "control_forever";
-    instruction.body = [];
-
-    let terminated = false;
-    node.block.body.forEach((stmt) => {
-      const result = this.visit(stmt);
-      if (result instanceof Instruction) {
-        if (terminated) {
-          throw new Error(
-            sprintf(
-              "unreachable code inside forever loop on line %d",
-              indexToLineCol(this.source, stmt.start).line,
-            ),
-          );
-        }
-        instruction.body.push(result);
-        if (TERMINATORS.includes(result.opcode)) {
-          terminated = true;
-        }
-      }
-    });
+    instruction.body = this.visitBlock(node.block);
     return instruction;
   }
 
@@ -618,18 +585,16 @@ class Analyzer {
 
   visitIfStatement(node) {
     const instruction = new Instruction();
-
     instruction.inputs.CONDITION = this.visit(node.cond);
 
     if (node.fail) {
       instruction.opcode = "control_if_else";
-      instruction.body = this.analyzeInstructions(node.pass.body);
-      instruction.elseBody = this.analyzeInstructions(node.fail.body);
+      instruction.body = this.visitBlock(node.pass);
+      instruction.elseBody = this.visitBlock(node.fail);
     } else {
       instruction.opcode = "control_if";
-      instruction.body = this.analyzeInstructions(node.pass.body);
+      instruction.body = this.visitBlock(node.pass);
     }
-
     return instruction;
   }
 
@@ -723,6 +688,35 @@ class Analyzer {
     this.scopes.push(this.currentScope);
     this.currentScope = parentScope;
     this.targets.get(this.currentTarget).blocks.push(block);
+  }
+
+  visitBlock(node) {
+    const parentScope = this.currentScope;
+    this.currentScope = new Scope(parentScope);
+
+    const instructions = [];
+    let terminated = false;
+    node.body.forEach((child) => {
+      const result = this.visit(child);
+      if (result instanceof Instruction) {
+        if (terminated) {
+          throw new Error(
+            sprintf(
+              "unreachable code detected on line %d",
+              indexToLineCol(this.source, child.start).line,
+            ),
+          );
+        }
+
+        instructions.push(result);
+        if (TERMINATORS.includes(result.opcode)) {
+          terminated = true;
+        }
+      }
+    });
+
+    this.currentScope = parentScope;
+    return instructions;
   }
 }
 
