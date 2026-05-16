@@ -24,9 +24,15 @@ class Compiler {
 
   reset() {
     this.project = new scratch.Project();
-    this.stage = this._createTarget("Stage", true);
-    this.mainSprite = this._createTarget("Sprite1", false);
-    this.project.targets = [this.stage, this.mainSprite];
+    this.broadcasts = new Map();
+    this.project.targets = [];
+  }
+
+  getBroadcastId(name) {
+    if (!this.broadcasts.has(name)) {
+      this.broadcasts.set(name, generate("broadcast"));
+    }
+    return this.broadcasts.get(name);
   }
 
   _createTarget(name, isStage) {
@@ -34,38 +40,59 @@ class Compiler {
     t.name = name;
     t.isStage = isStage;
     t.layerOrder = isStage ? 0 : 1;
+
+    const defaultCostume = new scratch.Costume();
+    if (isStage) {
+      defaultCostume.assetId = "87ec29ad216c0074c731d581c7f40c39";
+      defaultCostume.md5ext = "87ec29ad216c0074c731d581c7f40c39.svg";
+    } else {
+      defaultCostume.assetId = "6f0c9b9f05092d28f36191d7e68d84a3";
+      defaultCostume.md5ext = "6f0c9b9f05092d28f36191d7e68d84a3.svg";
+    }
+    t.costumes.push(defaultCostume);
+
     return t;
   }
 
   compile(analysis) {
     this.reset();
+    this.project.targets = [];
 
-    analysis.scopes.forEach((scope) => {
-      scope.variables.forEach((val, name) => {
-        const id = scope.varIDs.get(name);
-        const target = scope.globals.has(name) ? this.stage : this.mainSprite;
-
-        let initial = val;
+    analysis.targets.forEach((data, targetName) => {
+      const isStage = targetName === "Stage";
+      const target = this._createTarget(targetName, isStage);
+      data.variables.forEach((varData) => {
+        let initial = varData.value;
         while (initial && initial.id) initial = initial.value;
         const finalValue =
           initial && typeof initial === "object" && "value" in initial
             ? initial.value
             : (initial ?? 0);
 
-        target.variables[id] = [sprintf("%s\n%s", name, id), finalValue];
+        target.variables[varData.id] = [
+          sprintf("%s\n%s", varData.name, varData.id),
+          finalValue,
+        ];
       });
 
-      scope.lists.forEach((val, name) => {
-        const id = scope.listIDs.get(name);
-        const target = scope.globals.has(name) ? this.stage : this.mainSprite;
-        const rawValues = val.map((v) => v.value);
-        target.lists[id] = [name, rawValues];
+      data.lists.forEach((listData) => {
+        const rawValues = listData.value.map((v) => v.value);
+        target.lists[listData.id] = [listData.name, rawValues];
       });
+
+      data.blocks.forEach((eventBlock) => {
+        this.compileEvent(eventBlock, target);
+      });
+
+      this.project.targets.push(target);
     });
 
-    analysis.blocks.forEach((eventBlock) => {
-      this.compileEvent(eventBlock, this.mainSprite);
-    });
+    const stage = this.project.targets.find((t) => t.isStage);
+    if (stage) {
+      this.broadcasts.forEach((id, name) => {
+        stage.broadcasts[id] = name;
+      });
+    }
 
     return this.project;
   }
@@ -84,11 +111,26 @@ class Compiler {
       const argIds = argNames.map((_, i) => `arg${i}`);
       const argDefaults = argNames.map(() => "");
 
+      const prototypeInputs = {};
+      argIds.forEach((id, i) => {
+        const shadowId = generate("shadow");
+        target.blocks[shadowId] = {
+          opcode: "argument_reporter_string_number",
+          next: null,
+          parent: prototypeId,
+          inputs: {},
+          fields: { VALUE: [argNames[i], null] },
+          shadow: true,
+          topLevel: false,
+        };
+        prototypeInputs[id] = [scratch.InputStatus.SHADOW, shadowId];
+      });
+
       target.blocks[prototypeId] = {
         opcode: "procedures_prototype",
         next: null,
         parent: hatId,
-        inputs: {},
+        inputs: prototypeInputs,
         fields: {},
         shadow: false,
         topLevel: false,
@@ -108,6 +150,16 @@ class Compiler {
 
     for (const [key, val] of Object.entries(eventBlock.inputs)) {
       hat.inputs[key] = this.compileInput(val, target, hatId);
+    }
+
+    for (const [fieldName, val] of Object.entries(eventBlock.fields)) {
+      if (fieldName === "BROADCAST_OPTION") {
+        const name = val[0];
+        const id = this.getBroadcastId(name);
+        hat.fields[fieldName] = [name, id];
+      } else {
+        hat.fields[fieldName] = val;
+      }
     }
 
     target.blocks[hatId] = hat;
@@ -145,12 +197,26 @@ class Compiler {
         };
         block.inputs[key] = [scratch.InputStatus.SHADOW, menuId];
       } else {
-        block.inputs[key] = this.compileInput(val, target, blockId);
+        block.inputs[key] = this.compileInput(val, target, blockId, key); // Pass 'key'
+      }
+    }
+
+    for (const [fieldName, val] of Object.entries(inst.fields)) {
+      if (fieldName === "BROADCAST_OPTION") {
+        const name = val[0];
+        const id = this.getBroadcastId(name);
+        block.fields[fieldName] = [name, id];
+      } else {
+        block.fields[fieldName] = val;
       }
     }
 
     if (inst.opcode === "procedures_call") {
-      const argIds = Object.keys(inst.inputs);
+      const paramCount = (inst.proccode.match(/%s|%b/g) || []).length;
+      const argIds = [];
+      for (let i = 0; i < paramCount; i++) {
+        argIds.push(`arg${i}`);
+      }
 
       block.mutation = {
         tagName: "mutation",
@@ -176,7 +242,7 @@ class Compiler {
       block.mutation = {
         tagName: "mutation",
         children: [],
-        string: block.fields.PROPERTY[0],
+        string: block.fields.PROPERTY?.[0] ?? "",
       };
     }
 
@@ -193,7 +259,14 @@ class Compiler {
     return blockId;
   }
 
-  compileInput(val, target, parentId) {
+  compileInput(val, target, parentId, inputName) {
+    if (val instanceof StringValue && inputName === "BROADCAST_INPUT") {
+      const id = this.getBroadcastId(val.value);
+      return [
+        scratch.InputStatus.SHADOW,
+        [scratch.MathValues.BROADCAST, val.value, id],
+      ];
+    }
     if (val instanceof NumberValue)
       return [
         scratch.InputStatus.SHADOW,

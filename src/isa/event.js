@@ -30,6 +30,7 @@ module.exports = {
   whenBroadcastReceived: {
     opcode: "event_whenbroadcastreceived",
     type: "hat",
+    fields: { BROADCAST_OPTION: 0 },
   },
   broadcast: {
     opcode: "event_broadcast",

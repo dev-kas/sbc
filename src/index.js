@@ -158,6 +158,51 @@ func meow () {
 }
 `;
 
+code = `
+whenFlagClicked { say("stage"); }
+
+sprite Player {
+	whenFlagClicked { say("plr"); }
+}
+
+sprite Enemy {
+	whenFlagClicked { say("enemy"); }
+}
+`;
+
+code = `
+global global_total = 0;
+global global_multiplier = 10;
+
+sprite sprite1 {
+    local a = 5;
+    local b = 2;
+    local local_result = 0;
+
+    whenFlagClicked {
+        a = a * global_multiplier; 
+        b = a / b;
+        local_result = a + b;
+        global_total = local_result;
+    }
+}
+
+sprite sprite2 {
+    local press_count = 0;
+    local internal_score = 100;
+
+    whenKeyPressed("space") {
+        press_count = press_count + 1;
+        internal_score = internal_score - global_multiplier;
+    }
+    
+    whenKeyPressed("r") {
+        press_count = 0;
+        internal_score = 100;
+    }
+}
+`;
+
 console.log("CODE:");
 console.log(code.trim());
 
@@ -179,12 +224,6 @@ console.dir(analyzer, { depth: null });
 
 const compiler = new Compiler();
 const compiled = compiler.compile(analyzer);
-compiled.targets[0].costumes.push(new scratch.Costume());
-compiled.targets[0].costumes[0].assetId = "87ec29ad216c0074c731d581c7f40c39";
-compiled.targets[0].costumes[0].md5ext = "87ec29ad216c0074c731d581c7f40c39.svg";
-compiled.targets[1].costumes.push(new scratch.Costume());
-compiled.targets[1].costumes[0].assetId = "6f0c9b9f05092d28f36191d7e68d84a3";
-compiled.targets[1].costumes[0].md5ext = "6f0c9b9f05092d28f36191d7e68d84a3.svg";
 
 console.log("COMPILED:");
 console.log(JSON.stringify(compiled));

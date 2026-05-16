@@ -20,6 +20,7 @@ const {
   ArrayLiteral,
   ListAccessNode,
   FunctionDeclaration,
+  SpriteDeclaration,
 } = require("./ast");
 
 class Parser {
@@ -85,7 +86,8 @@ class Parser {
 
   parseTopLevelDeclaration() {
     // could be global/local variable declaration
-    // or a top-level event hook block
+    // or a top-level event hook block (for stage)
+    // or sprite declaration
     if (this.match(TokenType.GLOBAL, TokenType.LOCAL)) {
       const ast = this.parseVariableDeclaration();
       const semi = this.expect(TokenType.SEMICOLON);
@@ -95,7 +97,32 @@ class Parser {
       return this.parseEventHook();
     } else if (this.match(TokenType.FUNC)) {
       return this.parseFunctionDeclaration();
+    } else if (this.match(TokenType.SPRITE)) {
+      return this.parseSpriteDeclaration();
     }
+  }
+
+  parseSpriteDeclaration() {
+    this.expect(TokenType.SPRITE);
+    const name = this.parseIdentifier();
+    const node = new SpriteDeclaration();
+    node.name = name.symbol;
+
+    this.expect(TokenType.LBRACE);
+    node.body = [];
+    while (!this.match(TokenType.RBRACE) && !this.match(TokenType.EOF)) {
+      if (this.match(TokenType.GLOBAL, TokenType.LOCAL)) {
+        const decl = this.parseVariableDeclaration();
+        this.expect(TokenType.SEMICOLON);
+        node.body.push(decl);
+      } else if (this.match(TokenType.FUNC)) {
+        node.body.push(this.parseFunctionDeclaration());
+      } else {
+        node.body.push(this.parseEventHook());
+      }
+    }
+    this.expect(TokenType.RBRACE);
+    return node;
   }
 
   parseArguments() {

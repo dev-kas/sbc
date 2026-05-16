@@ -14,6 +14,7 @@ const {
   BinaryExpression,
   ArrayLiteral,
   FunctionDeclaration,
+  SpriteDeclaration,
 } = require("./ast");
 
 const TERMINATORS = [
@@ -90,6 +91,10 @@ class Analyzer {
     this.currentScope = null;
     this.procedures = new Map();
     this.source = "";
+    this.targets = new Map();
+
+    this.targets.set("Stage", { blocks: [], variables: [], lists: [] });
+    this.currentTarget = "Stage";
   }
 
   analyze(source, node) {
@@ -105,26 +110,47 @@ class Analyzer {
     throw new Error("visitor undefined for " + node.constructor.name);
   }
 
+  visitSpriteDeclaration(node) {
+    const prevTarget = this.currentTarget;
+    this.currentTarget = node.name;
+
+    if (!this.targets.has(this.currentTarget)) {
+      this.targets.set(this.currentTarget, {
+        blocks: [],
+        variables: [],
+        lists: [],
+      });
+    }
+
+    node.body.forEach((child) => this.visit(child));
+    this.currentTarget = prevTarget;
+  }
+
   visitProgram(node) {
     this.currentScope = new Scope();
     this.scopes.push(this.currentScope);
 
-    node.body.forEach((child) => {
-      if (child instanceof FunctionDeclaration) {
-        const name = child.name.symbol;
-        const proccode =
-          name +
-          (child.params.length > 0
-            ? " " + child.params.map(() => "%s").join(" ")
-            : "");
-        this.procedures.set(name, {
-          params: child.params,
-          proccode: proccode,
-          warp: child.warp,
-        });
-      }
-    });
+    const registerProcedures = (statements) => {
+      statements.forEach((child) => {
+        if (child instanceof FunctionDeclaration) {
+          const name = child.name.symbol;
+          const proccode =
+            name +
+            (child.params.length > 0
+              ? " " + child.params.map(() => "%s").join(" ")
+              : "");
+          this.procedures.set(name, {
+            params: child.params,
+            proccode: proccode,
+            warp: child.warp,
+          });
+        } else if (child instanceof SpriteDeclaration) {
+          registerProcedures(child.body);
+        }
+      });
+    };
 
+    registerProcedures(node.body);
     node.body.forEach((child) => {
       this.visit(child);
     });
@@ -232,7 +258,7 @@ class Analyzer {
 
     this.scopes.push(this.currentScope);
     this.currentScope = parentScope;
-    this.blocks.push(block);
+    this.targets.get(this.currentTarget).blocks.push(block);
   }
 
   visitVariableDeclaration(node) {
@@ -244,12 +270,28 @@ class Analyzer {
         evaluatedValue,
         node.global,
       );
+
+      const targetName = node.global ? "Stage" : this.currentTarget;
+      const listInfo = this.currentScope.getList(node.ident.symbol);
+      this.targets.get(targetName).lists.push({
+        name: listInfo.symbol,
+        id: listInfo.id,
+        value: evaluatedValue,
+      });
     } else {
       let finalValue = evaluatedValue;
       if (finalValue && finalValue.id) {
         finalValue = finalValue.value;
       }
       this.currentScope.define(node.ident.symbol, finalValue, node.global);
+
+      const targetName = node.global ? "Stage" : this.currentTarget;
+      const varInfo = this.currentScope.get(node.ident.symbol);
+      this.targets.get(targetName).variables.push({
+        name: varInfo.symbol,
+        id: varInfo.id,
+        value: varInfo.value,
+      });
     }
   }
 
@@ -435,38 +477,45 @@ class Analyzer {
 
     // abstractions
     if (name.includes(".")) {
-      let [listName, ...method] = name.split(".");
-      method = method.join(".");
-      const list = this.currentScope.getList(listName);
+      const parts = name.split(".");
+      const prefix = parts[0];
+      const method = parts.slice(1).join(".");
 
-      if (method === "add" || method === "push") {
-        const inst = new Instruction();
-        inst.opcode = "data_addtolist";
-        inst.inputs.ITEM = this.visit(node.args[0]);
-        inst.fields.LIST = [list.symbol, list.id];
-        return inst;
-      }
-      if (method === "remove" || method === "delete") {
-        const inst = new Instruction();
-        inst.opcode = "data_deleteoflist";
-        const visitedIndex = this.visit(node.args[0]);
-        if (visitedIndex instanceof NumberValue) {
-          inst.inputs.INDEX = new NumberValue(visitedIndex.value + 1);
-        } else {
-          const add = new BinaryExpression();
-          add.operator = "+";
-          add.lhs = visitedIndex;
-          add.rhs = new NumberValue(1);
-          inst.inputs.INDEX = add;
+      let list = null;
+      try {
+        list = this.currentScope.getList(prefix);
+      } catch (e) {}
+
+      if (list) {
+        if (method === "add" || method === "push") {
+          const inst = new Instruction();
+          inst.opcode = "data_addtolist";
+          inst.inputs.ITEM = this.visit(node.args[0]);
+          inst.fields.LIST = [list.symbol, list.id];
+          return inst;
         }
-        inst.fields.LIST = [list.symbol, list.id];
-        return inst;
-      }
-      if (method === "length") {
-        const inst = new Instruction();
-        inst.opcode = "data_lengthoflist";
-        inst.fields.LIST = [list.symbol, list.id];
-        return inst;
+        if (method === "remove" || method === "delete") {
+          const inst = new Instruction();
+          inst.opcode = "data_deleteoflist";
+          const visitedIndex = this.visit(node.args[0]);
+          if (visitedIndex instanceof NumberValue) {
+            inst.inputs.INDEX = new NumberValue(visitedIndex.value + 1);
+          } else {
+            const add = new BinaryExpression();
+            add.operator = "+";
+            add.lhs = visitedIndex;
+            add.rhs = new NumberValue(1);
+            inst.inputs.INDEX = add;
+          }
+          inst.fields.LIST = [list.symbol, list.id];
+          return inst;
+        }
+        if (method === "length") {
+          const inst = new Instruction();
+          inst.opcode = "data_lengthoflist";
+          inst.fields.LIST = [list.symbol, list.id];
+          return inst;
+        }
       }
     }
 
@@ -662,6 +711,7 @@ class Analyzer {
     const block = new EventBlock();
     block.opcode = "procedures_definition";
     block.proccode = procData.proccode;
+    block.params = node.params;
     block.warp = procData.warp;
 
     const parentScope = this.currentScope;
@@ -672,7 +722,7 @@ class Analyzer {
 
     this.scopes.push(this.currentScope);
     this.currentScope = parentScope;
-    this.blocks.push(block);
+    this.targets.get(this.currentTarget).blocks.push(block);
   }
 }
 

@@ -105,6 +105,11 @@ class FunctionDeclaration {
   warp = false;
 }
 
+class SpriteDeclaration {
+  name;
+  body;
+}
+
 module.exports = {
   EventHook,
   Program,
@@ -125,4 +130,5 @@ module.exports = {
   ArrayLiteral,
   ListAccessNode,
   FunctionDeclaration,
+  SpriteDeclaration,
 };
