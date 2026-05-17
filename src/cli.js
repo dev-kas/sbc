@@ -1,10 +1,8 @@
-#!/usr/bin/env node
-
 const { Command } = require("commander");
 const fs = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
-const package = require("../package.json");
+const pkg = require("../package.json");
 const { MemoryAdapter } = require("fs-adapters");
 const { CompilerDriver } = require("./compilerdriver");
 const { sprintf } = require("./utils");
@@ -12,8 +10,9 @@ const { sprintf } = require("./utils");
 const program = new Command();
 
 program
-  .name(package.name)
-  .description(package.description)
+  .name(pkg.name)
+  .description(pkg.description)
+  .version(pkg.version)
   .argument(
     "<files...>",
     "input source files (the first file is the main entrypoint)",
