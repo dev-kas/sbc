@@ -20,6 +20,7 @@ const SCRATCH_MAGIC_STRINGS = {
 class Compiler {
   constructor(options) {
     this.options = options;
+    this.assets = options?.assets || [];
     this.reset();
   }
 
@@ -42,15 +43,44 @@ class Compiler {
     t.isStage = isStage;
     t.layerOrder = isStage ? 0 : 1;
 
-    const defaultCostume = new scratch.Costume();
-    if (isStage) {
-      defaultCostume.assetId = "87ec29ad216c0074c731d581c7f40c39";
-      defaultCostume.md5ext = "87ec29ad216c0074c731d581c7f40c39.svg";
-    } else {
-      defaultCostume.assetId = "6f0c9b9f05092d28f36191d7e68d84a3";
-      defaultCostume.md5ext = "6f0c9b9f05092d28f36191d7e68d84a3.svg";
+    const assets = this.assets.filter((asset) => asset.spriteName === name);
+
+    const costumes = assets.filter(
+      (asset) =>
+        ["png", "svg", "jpeg", "jpg", "bmp", "gif"].includes(asset.ext), // list from https://github.com/scratchfoundation/scratch-parser/blob/8a1d65f627f178f2c8739f61b5df3cf6145b8b84/lib/sb3_definitions.json#L51
+    );
+    costumes.forEach((asset) => {
+      const costume = new scratch.Costume();
+      costume.assetId = asset.md5;
+      costume.md5ext = sprintf("%s.%s", asset.md5, asset.ext);
+      costume.dataFormat = asset.ext;
+      t.costumes.push(costume);
+    });
+
+    if (costumes.length === 0) {
+      const defaultCostume = new scratch.Costume();
+      if (isStage) {
+        defaultCostume.assetId = "87ec29ad216c0074c731d581c7f40c39";
+        defaultCostume.md5ext = "87ec29ad216c0074c731d581c7f40c39.svg";
+      } else {
+        defaultCostume.assetId = "6f0c9b9f05092d28f36191d7e68d84a3";
+        defaultCostume.md5ext = "6f0c9b9f05092d28f36191d7e68d84a3.svg";
+      }
+      t.costumes.push(defaultCostume);
     }
-    t.costumes.push(defaultCostume);
+
+    const sounds = assets.filter(
+      (asset) => ["wav", "wave", "mp3"].includes(asset.ext), // list from https://github.com/scratchfoundation/scratch-parser/blob/8a1d65f627f178f2c8739f61b5df3cf6145b8b84/lib/sb3_definitions.json#L81
+    );
+    sounds.forEach((asset) => {
+      const sound = new scratch.Sound();
+      sound.assetId = asset.md5;
+      sound.md5ext = sprintf("%s.%s", asset.md5, asset.ext);
+      sound.dataFormat = asset.ext;
+      sound.rate = 1000; // stubbed for now cuz idk what these are
+      sound.sampleCount = 2000; // stubbed for now cuz idk what these are
+      t.sounds.push(sound);
+    });
 
     return t;
   }
@@ -198,7 +228,7 @@ class Compiler {
         };
         block.inputs[key] = [scratch.InputStatus.SHADOW, menuId];
       } else {
-        block.inputs[key] = this.compileInput(val, target, blockId, key); // Pass 'key'
+        block.inputs[key] = this.compileInput(val, target, blockId, key);
       }
     }
 

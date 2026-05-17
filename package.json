@@ -9,9 +9,10 @@
   "license": "MIT",
   "author": "dev-kas",
   "type": "commonjs",
-  "main": "src/index.js",
+  "main": "src/cli.js",
   "scripts": {
-    "test": "node ."
+    "test": "node src/index.js",
+    "cli": "node src/cli.js"
   },
   "dependencies": {
     "commander": "^14.0.3",

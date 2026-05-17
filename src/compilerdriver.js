@@ -131,20 +131,13 @@ class CompilerDriver {
     zip.file("project.json", JSON.stringify(compiledObj));
 
     if (this.options.assets && this.options.assets.length > 0) {
-      for (const assetPath of this.options.assets) {
+      for (const asset of this.options.assets) {
         try {
-          const exists = await this.fs.exists(assetPath);
-          if (!exists) {
-            stepOpts.warn(`Asset not found, skipping: ${assetPath}`);
-            continue;
-          }
-
-          const assetData = await this.fs.read(assetPath);
-          const baseName = path.basename(assetPath);
-          zip.file(baseName, assetData);
+          const assetData = await this.fs.read(asset.internalFilename);
+          zip.file(asset.internalFilename, assetData);
         } catch (assetErr) {
           stepOpts.warn(
-            `Failed to include asset ${assetPath}: ${assetErr.message}`,
+            `failed to package asset ${asset.internalFilename}: ${assetErr.message}`,
           );
         }
       }
@@ -158,8 +151,6 @@ class CompilerDriver {
 
     const content = await zip.generateAsync({ type: "nodebuffer" });
     await this.fs.write(outName, content);
-
-    console.log(`\nSuccessfully compiled and bundled -> ${outName}`);
   }
 }
 

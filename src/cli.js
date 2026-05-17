@@ -3,6 +3,7 @@
 const { Command } = require("commander");
 const fs = require("fs/promises");
 const path = require("path");
+const crypto = require("crypto");
 const package = require("../package.json");
 const { MemoryAdapter } = require("fs-adapters");
 const { CompilerDriver } = require("./compilerdriver");
@@ -30,8 +31,8 @@ program
   .option("--werror", "make all warnings into errors")
 
   .option(
-    "-a, --asset <path>",
-    "explicitly allow an asset file in the final sb3 (can be used multiple times)",
+    "-a, --asset <string>",
+    "explicitly allow an asset file in the format spritename:pathtofile:costumeorsoundname (can be used multiple times)",
     (val, prev) => prev.concat([val]),
     [],
   )
@@ -52,13 +53,45 @@ program
       }
     }
 
-    // sandbox: read only asset files explicitly allowed by the user
-    for (const asset of options.asset) {
+    const structuredAssets = [];
+
+    // sandbox: read, hash, and structure asset files explicitly allowed by the user
+    for (const assetStr of options.asset) {
+      const firstColon = assetStr.indexOf(":");
+      const lastColon = assetStr.lastIndexOf(":");
+
+      if (firstColon === -1 || firstColon === lastColon) {
+        console.error(
+          sprintf(
+            "invalid asset format `%s`. expected format: spritename:pathtofile:assetname",
+            assetStr,
+          ),
+        );
+        process.exit(1);
+      }
+
+      const spriteName = assetStr.substring(0, firstColon);
+      const filePath = assetStr.substring(firstColon + 1, lastColon);
+      const assetName = assetStr.substring(lastColon + 1);
+
       try {
-        memFsState[asset] = await fs.readFile(asset);
+        const fileBuffer = await fs.readFile(filePath);
+
+        const md5 = crypto.createHash("md5").update(fileBuffer).digest("hex");
+        const ext = path.extname(filePath).slice(1) || "png";
+        const internalFilename = `${md5}.${ext}`;
+        memFsState[internalFilename] = fileBuffer;
+
+        structuredAssets.push({
+          spriteName,
+          name: assetName,
+          md5,
+          ext,
+          internalFilename,
+        });
       } catch (err) {
         console.error(
-          sprintf("could not read asset file `%s`: %s", asset, err.message),
+          sprintf("could not read asset file `%s`: %s", filePath, err.message),
         );
         process.exit(1);
       }
@@ -76,13 +109,14 @@ program
       compileOnly: !!options.c,
       skipPreprocess: !options.preprocess,
       werror: !!options.werror,
-      assets: options.asset,
+      assets: structuredAssets,
     };
 
     const driver = new CompilerDriver(virtualFs, driverOpts);
 
     try {
       await driver.compile(mainEntrypoint);
+
       const isFullCompile =
         !options.E &&
         !options.lexOnly &&
