@@ -231,13 +231,13 @@ class Preprocessor {
     //  no <filename> for now umm maybe do that later
     const match = args.match(/^"([^"]+)"$/);
     if (!match)
-      this.error('invalid #include syntax; expected #include "filename"');
+      throw new Error('invalid #include syntax; expected #include "filename"');
 
     const filename = match[1];
     const fullPath = this.resolvePath(currentFile, filename);
 
     if (!(await this.fs.exists(fullPath))) {
-      this.error(sprintf("cannot find include file '%s'", filename));
+      throw new Error(sprintf("cannot find include file '%s'", filename));
     }
 
     if (this.pragmaOnceFiles.has(fullPath)) {
@@ -264,7 +264,7 @@ class Preprocessor {
     try {
       return !!new Function(`return (${processed});`)(); // safe cuz cleaned
     } catch (e) {
-      this.error(sprintf("invalid expression in #if: '%s'", expr));
+      throw new Error(sprintf("invalid expression in #if: '%s'", expr));
     }
   }
 
