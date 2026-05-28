@@ -1,0 +1,34 @@
+global round = 0;
+
+whenFlagClicked() {
+  round = 0;
+  broadcast("start");
+}
+
+sprite Player {
+  local stepSize = 18;
+
+  whenBroadcastReceived("start") {
+    goToXY(-120, 0);
+    say("Player ready");
+
+    repeat(8) {
+      moveSteps(stepSize);
+      turnRight(20);
+      wait(0.1);
+    }
+
+    broadcast("player done");
+  }
+}
+
+sprite Announcer {
+  whenBroadcastReceived("start") {
+    say("Race started");
+  }
+
+  whenBroadcastReceived("player done") {
+    round = round + 1;
+    say(join("Finished round ", round));
+  }
+}

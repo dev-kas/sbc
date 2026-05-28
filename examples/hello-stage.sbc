@@ -1,0 +1,13 @@
+global clicks = 0;
+
+whenFlagClicked() {
+  clicks = 0;
+  say("Hello from sbc!");
+  wait(1);
+  say("Click the stage.");
+}
+
+whenStageClicked() {
+  clicks = clicks + 1;
+  say(join("Stage clicks: ", clicks));
+}

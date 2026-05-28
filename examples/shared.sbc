@@ -1,0 +1,6 @@
+#pragma once
+
+#define MESSAGE "Preprocessor demo"
+#define STEP_SIZE 20
+#define TURN_AMOUNT 30
+#define REPEAT_COUNT 12

@@ -1,0 +1,25 @@
+global names = ["Ada", "Grace", "Katherine"];
+global index = 0;
+
+func announceCurrent() {
+  say(join("Hello, ", names[index]));
+}
+
+func warp advanceIndex() {
+  index = index + 1;
+
+  if (index >= names.length()) {
+    index = 0;
+  }
+}
+
+whenFlagClicked() {
+  index = 0;
+  names.push("Dorothy");
+
+  repeat(6) {
+    announceCurrent();
+    wait(0.6);
+    advanceIndex();
+  }
+}

@@ -10,7 +10,7 @@ class Preprocessor {
       ((e) => {
         throw new Error(e);
       });
-    this.error = options?.warn || console.warn;
+    this.warn = options?.warn || console.warn;
   }
 
   reset() {
@@ -181,7 +181,7 @@ class Preprocessor {
         break;
       }
       case "error": {
-        this.error(sprintf("#error %s", args));
+        throw new Error(sprintf("#error %s", args));
       }
       case "include": {
         return { includeContent: await this.handleInclude(args, currentFile) };

@@ -1,0 +1,13 @@
+#include "shared.sbc"
+
+global distance = STEP_SIZE;
+
+whenFlagClicked() {
+  say(MESSAGE);
+
+  repeat(REPEAT_COUNT) {
+    moveSteps(distance);
+    turnRight(TURN_AMOUNT);
+    wait(0.15);
+  }
+}
